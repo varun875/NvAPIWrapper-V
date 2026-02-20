@@ -1,120 +1,145 @@
-## <img src="NvAPIWrapper/Icon.png" width="24" alt="NvAPIWrapper"> NvAPIWrapper (for NVAPI R410)
-[![](https://img.shields.io/github/license/falahati/NvAPIWrapper.svg?style=flat-square)](https://github.com/falahati/NvAPIWrapper/blob/master/LICENSE)
-[![](https://img.shields.io/github/commit-activity/y/falahati/NvAPIWrapper.svg?style=flat-square)](https://github.com/falahati/NvAPIWrapper/commits/master)
-[![](https://img.shields.io/github/issues/falahati/NvAPIWrapper.svg?style=flat-square)](https://github.com/falahati/NvAPIWrapper/issues)
+## <img src="NvAPIWrapper/Icon.png" width="24" alt="NvAPIWrapper"> NvAPIWrapper-V (Modernized NVIDIA NVAPI Wrapper)
 
-NvAPIWrapper is a .Net wrapper for NVIDIA public API, capable of managing all aspects of a display setup using NVIDIA GPUs.
+Fork of [falahati/NvAPIWrapper](https://github.com/falahati/NvAPIWrapper) with safe modernization work focused on newer NVIDIA drivers/GPUs and better fallback behavior on older systems.
 
-This project is licensed under LGPL and therefore can be used in closed source or commercial projects. However, any commit or change to the main code must be public and there should be a read me file along with the DLL clarifying the license and its terms as part of your project as well as a hyperlink to this repository. [Read more about LGPL](https://github.com/falahati/NvAPIWrapper/blob/master/LICENSE).
+- Repository: `https://github.com/varun875/NvAPIWrapper-V`
+- Package ID: `Varun.NvAPIWrapper.Net`
+- Current package version in this repo: `8.9.0`
+- Library targets: `netstandard2.1`, `net461`
+- Library language version: C# `9.0`
 
-## How to get
-[![](https://img.shields.io/nuget/dt/NvAPIWrapper.Net.svg?style=flat-square)](https://www.nuget.org/packages/NvAPIWrapper.Net)
-[![](https://img.shields.io/nuget/v/NvAPIWrapper.Net.svg?style=flat-square)](https://www.nuget.org/packages/NvAPIWrapper.Net)
+## What Changed In This Fork
 
-This library is available for download and use through <a href="https://www.nuget.org/packages/NvAPIWrapper.Net">NuGet Gallery</a>.
+### 1. R580-era modern function mappings added
+Modern IDs and delegates were wired for:
 
-## Help me fund my own Death Star
+- `NvAPI_GPU_GetGspFeatures`
+- `NvAPI_GPU_NVLINK_GetCaps`
+- `NvAPI_SYS_GetDisplayDriverInfo`
+- `NvAPI_SYS_GetPhysicalGPUs`
+- `NvAPI_SYS_GetLogicalGPUs`
+- `NvAPI_RegisterRiseCallback`
+- `NvAPI_RequestRise`
+- `NvAPI_UninstallRise`
 
-[![](https://img.shields.io/badge/crypto-CoinPayments-8a00a3.svg?style=flat-square)](https://www.coinpayments.net/index.php?cmd=_donate&reset=1&merchant=820707aded07845511b841f9c4c335cd&item_name=Donate&currency=USD&amountf=20.00000000&allow_amount=1&want_shipping=0&allow_extra=1)
-[![](https://img.shields.io/badge/shetab-ZarinPal-8a00a3.svg?style=flat-square)](https://zarinp.al/@falahati)
-[![](https://img.shields.io/badge/usd-Paypal-8a00a3.svg?style=flat-square)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ramin.graphix@gmail.com&lc=US&item_name=Donate&no_note=0&cn=&curency_code=USD&bn=PP-DonationsBF:btn_donateCC_LG.gif:NonHosted)
+### 2. Safe capability-first APIs (`Try*`) added
+New `Try*` wrappers were added so unsupported drivers/GPUs do not throw in common telemetry paths:
 
-**--OR--**
+- `GPUApi.TryGetGSPInfo`
+- `GPUApi.TryGetNVLinkCaps`
+- `GPUApi.TryGetPhysicalGPUHandleData`
+- `GPUApi.TryGetLogicalGPUHandleData`
+- `GPUApi.TryClientPowerTopologyGetStatus`
+- `GPUApi.TryClientPowerPoliciesGetStatus`
+- `GPUApi.TryClientPowerPoliciesGetInfo`
+- `GPUApi.TryGetPerformancePoliciesStatus`
+- `GPUApi.TryGetPerformanceDecreaseInfo`
+- `GPUApi.TryGetCurrentPerformanceState`
+- `GeneralApi.TryGetDisplayDriverInfo`
+- `NVIDIA.TryGetDisplayDriverInfo`
 
-You can always donate your time by contributing to the project or by introducing it to others.
+### 3. High-level GPU improvements
 
-## What's Supported
-NvAPIWrapper is not a complete wrapper of NVAPI; at least, not yet. Following is the list of NVAPI features and their status:
+- `PhysicalGPU.GetPhysicalGPUs()` and `LogicalGPU.GetLogicalGPUs()` now try modern metadata enumeration first, then fall back to legacy enumeration.
+- Added `PhysicalGPU.GSPFirmwareVersion`
+- Added `PhysicalGPU.NVLinkCapabilities`
+- Added `PhysicalGPU.IsNVLinkSupported`
+- Added power telemetry snapshot support:
+  - `PhysicalGPU.TryGetPowerTelemetrySnapshot(out GPUPowerTelemetrySnapshot?)`
+  - `PhysicalGPU.TryGetEstimatedBoardPowerUsageInWatts(...)`
+  - `PhysicalGPU.TryGetEstimatedGPUPowerUsageInWatts(...)`
+- Added safe thermal/usage helpers:
+  - `GPUThermalInformation.TryGetCurrentThermalLevel(...)`
+  - `GPUThermalInformation.TryGetThermalSensors(...)`
+  - `GPUUsageInformation.TryGetUtilizationDomainsStatus(...)`
+  - `GPUUsageInformation.TryGetDynamicPerformanceStatesEnabled(...)`
+  - `GPUPowerTopologyInformation.TryGetPowerTopologyEntries(...)`
+  - `GPUPowerTopologyInformation.TryGetPowerUsageInPercent(...)`
+  - `GPUPowerTopologyInformation.TryGetEstimatedPowerUsageInWatts(...)`
 
-- [X] General: Full Support
-  - [X] Chipset Information
-  - [X] Driver Information and Driver Restart
-  - [X] Lid and Dock Information
-        
-- [X] Surround: Full Support
-  - [X] Topology Configuration (Mosaic Phase 2)
-  - [X] Grid Configuration (Mosaic Phase 1)
-  - [X] Warping Control
-  - [X] Color Intensity Control
-        
-- [X] Display: Full Support
-  - [X] Display Information and Capabilities
-  - [X] Path Configuration
-  - [X] Custom Resolutions
-  - [X] Refresh Rate Override
-  - [X] HDMI Support Information and Capabilities
-  - [X] DisplayPort Color Capabilities
-  - [X] HDR Capabalities
-  
-- [X] Display Control: Full Support
-  - [X] Color Control
-  - [X] Saturation Control (Vibrance)
-  - [X] HUE Control
-  - [X] HDMI InfoFrame Control
-  - [X] HDR and HDR Color Control
-  - [X] ScanOut Information and Configuration
-  - [X] View Control
-  - [X] EDID Retrival and Modification
-        
-- [X] GPU: Full Support
-  - [X] GPU Informaion
-  - [X] GPU Atchitecture Information
-  - [X] GPU Output Information
-  - [X] ECC Memory Reporting and Managment
-  - [X] PCI-E Information
-  - [X] Performance Capabilities and Monitoring
-  - [X] Cooler Information (Fan/Liquid/Passive) and Managment (Including RTX+)
-  - [X] GPU Illumination Managment
-  - [X] Usage Monitoring
-  - [X] Power Limit Status and Managment (Modification only via the low level API)
-  - [X] Thermal Limit Status and Managment (Modification only via the low level API)
-  - [X] Performance State Managment (Modification only via the low level API)
-  - [X] Clock Boost and Clock Boost Curve Confiurations (via low level API)
-  - [X] Voltage Boost and Voltage Boost Table Configurations (via low level API)
-  - [X] Clock Lock Configurations (via low level API)
-        
-- [X] DRS: Full Support
-  - [X] Session, Profile and Application Managment
-  - [X] Documented Setting and Managed Setting Values
-        
-- [X] Stereo (3D): Full Support
-  - [X] Stereo Control
-  - [X] Stereo Configurations
-        
-- [ ] D3D: No Support
-- [ ] GSync: No Support
-- [ ] OpenGL: No Support
-- [ ] Vidio: No Support
+### 4. Updated enum coverage for modern GPU reporting
 
+- Memory: `GDDR6`, `GDDR6X`, `GDDR7`, `HBM2`, `HBM2e`, `HBM3`, `HBM3e`, `LPDDR5`, `DDR5`
+- PCIe: `PCIe4`, `PCIe5` (plus display formatting updates)
+- System: `Workstation`, `DataCenter`, `Hyperscale`, `Edge`
+- Public clock domains: `BaseClock`, `VideoEncode`, `Tensor`, `Display`
+- Voltage domains: `PCIeCore`, `SOCCore`, `Memory`
 
-If a feature you need is missing, feel free to open an [issue](https://github.com/falahati/NvAPIWrapper/issues).
+### 5. Packaging metadata modernized for NuGet
 
-## How to use
-NvAPIWrappr allows you to use the NVAPI functions directly (a.k.a. the low-level API) using the `NvAPIWrapper.Native` namespace. However, there is also a .Net friendly implementation of the NVAPI features (a.k.a. the high-level API) that can be used to minimize the complexity of your code and makes it more compatible with later releases of the library, therefore, I strongly recommend using these classes instead of using the native functions directly.
+- Uses modern package metadata:
+  - `<license type="file">`
+  - `<icon>`
+  - `<readme>`
+- Package includes:
+  - `LICENSE`
+  - `README.md`
+  - `Icon.png`
 
-Currently, you can access different parts of the high level API as follow:
+## Quick Start
 
-* Namespace `NvAPIWrapper.Display`: Display and Display Control API
-* Namespace `NvAPIWrapper.GPU`: GPU specific API
-* Namespace `NvAPIWrapper.Mosaic`: Mosaic API - Surround
-* Namespace `NvAPIWrapper.DRS`: NVIDIA Driver settings and application profiles
-* Namespace `NvAPIWrapper.Stereo`: Stereo specific settings and configurations
-* Class `NvAPIWrapper.NVIDIA`: General Information And Methods
+```csharp
+using NvAPIWrapper;
+using NvAPIWrapper.GPU;
 
-Please also take a look at the `NvAPISample` project for a number of simple examples.
+NVIDIA.Initialize();
 
-This library is fully documented and this makes your journey through it as easy as it is possible with NVAPI.
+foreach (var gpu in PhysicalGPU.GetPhysicalGPUs())
+{
+    Console.WriteLine(gpu.FullName);
 
-## Related Projects
+    // Modern capability data with safe fallback behavior
+    Console.WriteLine($"GSP FW: {gpu.GSPFirmwareVersion ?? "N/A"}");
+    Console.WriteLine($"NVLink supported: {gpu.IsNVLinkSupported}");
 
-- [**WindowsDisplayAPI**](https://github.com/falahati/WindowsDisplayAPI/): WindowsDisplayAPI is a .Net wrapper for Windows Display and Windows CCD APIs
+    // Power telemetry snapshot (when available)
+    if (gpu.TryGetPowerTelemetrySnapshot(out var snapshot) && snapshot != null)
+    {
+        Console.WriteLine($"GPU power %: {snapshot.GPUPowerUsageInPercent}");
+        Console.WriteLine($"Board power %: {snapshot.BoardPowerUsageInPercent}");
+    }
+}
 
-- [**EDIDParser**](https://github.com/falahati/EDIDParser/): EDIDParser is a library allowing all .Net developers to parse and to extract information from raw EDID binary data. (Extended Display Identification Data)
+NVIDIA.Unload();
+```
 
-- [**HeliosDisplayManagement**](https://github.com/falahati/HeliosDisplayManagement/): An open source display profile management program for Windows with support for NVIDIA Surround
+## Power In Watts (Important Note)
+
+NVAPI commonly reports power telemetry as percentages. The new watt helpers estimate watts by multiplying:
+
+`powerPercent * providedPowerLimitWatts / 100`
+
+So these values are estimates and depend on the limit you provide (for example board TGP/TDP).
+
+## Build And Pack
+
+```powershell
+dotnet build NvAPIWrapper\NvAPIWrapper.csproj -c Release -p:SignAssembly=false
+dotnet pack NvAPIWrapper\NvAPIWrapper.csproj -c Release -p:SignAssembly=false
+```
+
+Artifacts are generated in `Release\`.
+
+## API Surface
+
+- `NvAPIWrapper.Display` - Display and display-control APIs
+- `NvAPIWrapper.GPU` - GPU APIs and high-level telemetry helpers
+- `NvAPIWrapper.Mosaic` - Mosaic/Surround APIs
+- `NvAPIWrapper.DRS` - Driver profile APIs
+- `NvAPIWrapper.Stereo` - Stereo APIs
+- `NvAPIWrapper.Native` - Low-level NVAPI delegates/structures
+- `NvAPIWrapper.NVIDIA` - General system entry points
+
+## Compatibility Philosophy
+
+This fork prioritizes:
+
+1. Additive changes
+2. Capability checks before feature usage
+3. Legacy fallback paths to avoid regressions on older drivers/GPUs
 
 ## License
-Copyright (C) 2017-2020 Soroush Falahati
 
-This project is licensed under the GNU Lesser General Public License ("LGPL") and therefore can be used in closed source or commercial projects. 
-However, any commit or change to the main code must be public and there should be a read me file along with the DLL clarifying the license and its terms as part of your project as well as a hyperlink to this repository. [Read more about LGPL](LICENSE).
+Copyright (C) 2017-2026 Soroush Falahati and contributors
+
+This project is licensed under LGPL v3. See `LICENSE`.

@@ -1,12 +1,13 @@
-﻿                  NvAPIWrapper Library
+                  NvAPIWrapper-V Library
 ------------------------------------------------------------
-NvAPIWrapper is a library released under the LGPLv3 license, 
-allowing all  .Net  developers to  access and use the  NVAPI
-functionalities.
+This package is a fork of NvAPIWrapper with modernization work
+for newer NVIDIA driver/GPU telemetry and compatibility-safe
+fallback APIs.
 
-For more  information about this  library,  please check out
-our GitHub page:
-https://github.com/falahati/NvAPIWrapper
+Package ID: Varun.NvAPIWrapper.Net
+Repository: https://github.com/varun875/NvAPIWrapper-V
 
+Please read the bundled README.md for the full feature list,
+usage samples, and compatibility notes.
 
-2017 Soroush Falahati (https://falahati.net)
+Licensed under LGPL v3. See LICENSE.

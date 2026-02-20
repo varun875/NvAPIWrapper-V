@@ -30,6 +30,26 @@ namespace NvAPIWrapper.Native.GPU
         /// <summary>
         ///     Video decoding clock
         /// </summary>
-        Video = 8
+        Video = 8,
+
+        /// <summary>
+        ///     Base/Core clock (Ada+ architectures)
+        /// </summary>
+        BaseClock = 10,
+
+        /// <summary>
+        ///     Video encoding clock (NVENC)
+        /// </summary>
+        VideoEncode = 11,
+
+        /// <summary>
+        ///     Tensor clock (separate from graphics on H100+)
+        /// </summary>
+        Tensor = 12,
+
+        /// <summary>
+        ///     Display clock
+        /// </summary>
+        Display = 13
     }
 }

@@ -1,6 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NvAPIWrapper.Native;
+using NvAPIWrapper.Native.Exceptions;
+using NvAPIWrapper.Native.General;
 using NvAPIWrapper.Native.GPU;
 
 namespace NvAPIWrapper.GPU
@@ -89,11 +92,67 @@ namespace NvAPIWrapper.GPU
         }
 
         /// <summary>
+        ///     Tries to get utilization domains without throwing for unsupported GPUs/drivers.
+        /// </summary>
+        /// <param name="domainsStatus">Utilization domains when available.</param>
+        /// <returns>True when telemetry is available; otherwise false.</returns>
+        public bool TryGetUtilizationDomainsStatus(out GPUUsageDomainStatus[] domainsStatus)
+        {
+            try
+            {
+                domainsStatus = UtilizationDomainsStatus.ToArray();
+                return true;
+            }
+            catch (NVIDIANotSupportedException)
+            {
+                domainsStatus = Array.Empty<GPUUsageDomainStatus>();
+                return false;
+            }
+            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            {
+                domainsStatus = Array.Empty<GPUUsageDomainStatus>();
+                return false;
+            }
+        }
+
+        /// <summary>
+        ///     Tries to get dynamic performance state enablement without throwing for unsupported GPUs/drivers.
+        /// </summary>
+        /// <param name="isEnabled">True if dynamic performance states are enabled.</param>
+        /// <returns>True when the capability is available; otherwise false.</returns>
+        public bool TryGetDynamicPerformanceStatesEnabled(out bool isEnabled)
+        {
+            try
+            {
+                isEnabled = IsDynamicPerformanceStatesEnabled;
+                return true;
+            }
+            catch (NVIDIANotSupportedException)
+            {
+                isEnabled = false;
+                return false;
+            }
+            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            {
+                isEnabled = false;
+                return false;
+            }
+        }
+
+        /// <summary>
         ///     Enables dynamic performance states
         /// </summary>
         public void EnableDynamicPerformanceStates()
         {
             GPUApi.EnableDynamicPStates(PhysicalGPU.Handle);
         }
+
+        private static bool IsCapabilityUnavailableStatus(Status status)
+        {
+            return status == Status.NotSupported ||
+                   status == Status.NoImplementation ||
+                   status == Status.FunctionNotFound;
+        }
     }
 }
+

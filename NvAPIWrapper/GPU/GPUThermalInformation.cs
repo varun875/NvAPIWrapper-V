@@ -1,6 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NvAPIWrapper.Native;
+using NvAPIWrapper.Native.Exceptions;
+using NvAPIWrapper.Native.General;
 
 namespace NvAPIWrapper.GPU
 {
@@ -38,5 +41,61 @@ namespace NvAPIWrapper.GPU
                     .Select((sensor, i) => new GPUThermalSensor(i, sensor));
             }
         }
+
+        /// <summary>
+        ///     Tries to get current thermal level without throwing for unsupported GPUs/drivers.
+        /// </summary>
+        /// <param name="currentThermalLevel">Current thermal level when available.</param>
+        /// <returns>True when telemetry is available; otherwise false.</returns>
+        public bool TryGetCurrentThermalLevel(out int currentThermalLevel)
+        {
+            try
+            {
+                currentThermalLevel = CurrentThermalLevel;
+                return true;
+            }
+            catch (NVIDIANotSupportedException)
+            {
+                currentThermalLevel = 0;
+                return false;
+            }
+            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            {
+                currentThermalLevel = 0;
+                return false;
+            }
+        }
+
+        /// <summary>
+        ///     Tries to get thermal sensors without throwing for unsupported GPUs/drivers.
+        /// </summary>
+        /// <param name="thermalSensors">Thermal sensors when available.</param>
+        /// <returns>True when telemetry is available; otherwise false.</returns>
+        public bool TryGetThermalSensors(out GPUThermalSensor[] thermalSensors)
+        {
+            try
+            {
+                thermalSensors = ThermalSensors.ToArray();
+                return true;
+            }
+            catch (NVIDIANotSupportedException)
+            {
+                thermalSensors = Array.Empty<GPUThermalSensor>();
+                return false;
+            }
+            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            {
+                thermalSensors = Array.Empty<GPUThermalSensor>();
+                return false;
+            }
+        }
+
+        private static bool IsCapabilityUnavailableStatus(Status status)
+        {
+            return status == Status.NotSupported ||
+                   status == Status.NoImplementation ||
+                   status == Status.FunctionNotFound;
+        }
     }
 }
+

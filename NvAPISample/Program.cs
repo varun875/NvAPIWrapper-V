@@ -23,6 +23,7 @@ namespace NvAPISample
                 {"Physical GPUs", PrintPhysicalGPUs},
                 {"GPU Temperatures", PrintGPUSensors},
                 {"GPU Coolers", PrintGPUCoolers},
+                {"GPU Power Telemetry", PrintGPUPowerTelemetry},
                 {"GPU Performance States", PrintGPUPerformanceStates},
                 {"TCC GPUs", PrintTCCGPUs},
                 {"Grid Topologies (Mosaic - NVIDIA Surround)", PrintGridTopologies},
@@ -119,6 +120,75 @@ namespace NvAPISample
                 ConsoleWriter.Default.PrintCaption("PhysicalGPU.PerformanceStatesInfo");
                 ConsoleWriter.Default.WriteObject(gpu.PerformanceStatesInfo, 3);
             }, "Select a GPU to show performance states configuration");
+        }
+
+        private static void PrintGPUPowerTelemetry()
+        {
+            ConsoleWriter.Default.PrintCaption("PhysicalGPU.GetPhysicalGPUs()");
+            ConsoleNavigation.Default.PrintNavigation(PhysicalGPU.GetPhysicalGPUs(), (i, gpu) =>
+            {
+                ConsoleWriter.Default.PrintCaption("PhysicalGPU.TryGetPowerTelemetrySnapshot");
+
+                if (!gpu.TryGetPowerTelemetrySnapshot(out var snapshot) || snapshot == null)
+                {
+                    Console.WriteLine("Power telemetry is not available on this GPU/driver.");
+                    return;
+                }
+
+                // Basic telemetry (percentage-based)
+                ConsoleWriter.Default.PrintCaption("Power Usage (Percentage)");
+                ConsoleWriter.Default.WriteObject(new
+                {
+                    snapshot.CapturedAtUtc,
+                    snapshot.CurrentPerformanceState,
+                    snapshot.CurrentPerformanceLimit,
+                    snapshot.PerformanceDecreaseReason,
+                    GPUPowerPercent = snapshot.GPUPowerUsageInPercent?.ToString("F1") + "%" ?? "N/A",
+                    BoardPowerPercent = snapshot.BoardPowerUsageInPercent?.ToString("F1") + "%" ?? "N/A",
+                    ActivePowerTarget = snapshot.ActivePowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
+                    DefaultPowerTarget = snapshot.DefaultPowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
+                    MinPowerTarget = snapshot.MinimumPowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
+                    MaxPowerTarget = snapshot.MaximumPowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
+                });
+
+                // Watt-based readings (automatic from TDP database)
+                ConsoleWriter.Default.PrintCaption("Power Usage (Watts) - Auto-resolved from GPU TDP Database");
+                if (snapshot.IsTDPKnown)
+                {
+                    ConsoleWriter.Default.WriteObject(new
+                    {
+                        MatchedArchitecture = snapshot.MatchedArchitecture ?? "Unknown",
+                        DefaultTDP = snapshot.DefaultTDPInWatts?.ToString("F0") + " W" ?? "N/A",
+                        CurrentPowerLimit = snapshot.CurrentPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
+                        DefaultPowerLimit = snapshot.DefaultPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
+                        MinPowerLimit = snapshot.MinimumPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
+                        MaxPowerLimit = snapshot.MaximumPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
+                        BoardPowerDraw = snapshot.BoardPowerDrawInWatts?.ToString("F1") + " W" ?? "N/A",
+                        GPUPowerDraw = snapshot.GPUPowerDrawInWatts?.ToString("F1") + " W" ?? "N/A",
+                    });
+                }
+                else
+                {
+                    Console.WriteLine($"  GPU '{gpu.FullName}' is not in the built-in TDP database.");
+                    Console.WriteLine("  Use GPUPowerSpecDatabase.RegisterSpec() to add support.");
+                    Console.WriteLine("  Or use TryEstimateBoardPowerInWatts(tdpWatts) with a manual TDP value.");
+                }
+
+                // Throttle status
+                ConsoleWriter.Default.PrintCaption("Throttle Status");
+                ConsoleWriter.Default.WriteObject(new
+                {
+                    snapshot.ThrottleStatus,
+                    snapshot.IsPowerLimitActive,
+                    snapshot.IsThermalLimitActive,
+                    snapshot.IsVoltageLimitActive,
+                    snapshot.IsNoLoadLimitActive,
+                });
+
+                // Raw topology entries
+                ConsoleWriter.Default.PrintCaption("Raw Power Topology Entries");
+                ConsoleWriter.Default.WriteObject(snapshot.PowerTopologyEntries.ToArray());
+            }, "Select a GPU to show power telemetry");
         }
 
         private static void PrintGPUSensors()

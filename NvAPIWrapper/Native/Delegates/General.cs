@@ -34,8 +34,28 @@ namespace NvAPIWrapper.Native.Delegates
             out uint driverVersion,
             out ShortString buildBranchString);
 
+        [FunctionId(FunctionId.NvAPI_SYS_GetDisplayDriverInfo)]
+        public delegate Status NvAPI_SYS_GetDisplayDriverInfo(
+            [Accepts(typeof(DisplayDriverInfoV2))] [In]
+            ValueTypeReference driverInfo);
+
         [FunctionId(FunctionId.NvAPI_SYS_GetLidAndDockInfo)]
         public delegate Status NvAPI_SYS_GetLidAndDockInfo([In] [Out] ref LidDockParameters lidAndDock);
+
+        [FunctionId(FunctionId.NvAPI_RegisterRiseCallback)]
+        public delegate Status NvAPI_RegisterRiseCallback(
+            [Accepts(typeof(RiseCallbackSettingsV1))] [In]
+            ValueTypeReference callbackSettings);
+
+        [FunctionId(FunctionId.NvAPI_RequestRise)]
+        public delegate Status NvAPI_RequestRise(
+            [Accepts(typeof(RequestRiseSettingsV1))] [In]
+            ValueTypeReference requestContent);
+
+        [FunctionId(FunctionId.NvAPI_UninstallRise)]
+        public delegate Status NvAPI_UninstallRise(
+            [Accepts(typeof(UninstallRiseSettingsV1))] [In]
+            ValueTypeReference requestContent);
 
         [FunctionId(FunctionId.NvAPI_Unload)]
         public delegate Status NvAPI_Unload();

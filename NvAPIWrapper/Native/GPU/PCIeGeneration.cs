@@ -23,6 +23,16 @@
         /// <summary>
         ///     PCI-e 3.0
         /// </summary>
-        PCIe3
+        PCIe3,
+
+        /// <summary>
+        ///     PCI-e 4.0 (RTX 40 series standard)
+        /// </summary>
+        PCIe4,
+
+        /// <summary>
+        ///     PCI-e 5.0 (RTX 50 series standard)
+        /// </summary>
+        PCIe5
     }
 }

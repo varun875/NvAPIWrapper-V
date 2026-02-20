@@ -41,6 +41,16 @@ namespace NvAPIWrapper.Native.GPU
         /// <summary>
         ///     Toshiba Corporation
         /// </summary>
-        Toshiba
+        Toshiba,
+
+        /// <summary>
+        ///     Samsung Electronics (Blackwell/50 series)
+        /// </summary>
+        Samsung,
+
+        /// <summary>
+        ///     Intel Foundry Services
+        /// </summary>
+        IntelFoundryServices
     }
 }

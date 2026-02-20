@@ -13,6 +13,21 @@ namespace NvAPIWrapper.Native.GPU
         Core = 0,
 
         /// <summary>
+        ///     PCIe Core voltage (Ada+)
+        /// </summary>
+        PCIeCore = 1,
+
+        /// <summary>
+        ///     System-on-Chip Core voltage (Ampere+)
+        /// </summary>
+        SOCCore = 2,
+
+        /// <summary>
+        ///     Memory voltage domain (data center GPUs)
+        /// </summary>
+        Memory = 3,
+
+        /// <summary>
         ///     Undefined voltage domain
         /// </summary>
         Undefined = PerformanceStatesInfoV2.MaxPerformanceStateVoltages

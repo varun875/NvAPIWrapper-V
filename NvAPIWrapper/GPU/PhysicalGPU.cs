@@ -162,6 +162,48 @@ namespace NvAPIWrapper.GPU
         }
 
         /// <summary>
+        ///     Gets the running GSP firmware version on modern GPUs, if available.
+        /// </summary>
+        public string? GSPFirmwareVersion
+        {
+            get
+            {
+                if (!GPUApi.TryGetGSPInfo(Handle, out var gspInfo))
+                {
+                    return null;
+                }
+
+                var version = gspInfo.FirmwareVersion;
+
+                return string.IsNullOrWhiteSpace(version) ? null : version;
+            }
+        }
+
+        /// <summary>
+        ///     Gets NVLink capabilities on GPUs/drivers that support NVLink capability query.
+        /// </summary>
+        public NVLinkGetCapsV1? NVLinkCapabilities
+        {
+            get
+            {
+                if (!GPUApi.TryGetNVLinkCaps(Handle, out var caps))
+                {
+                    return null;
+                }
+
+                return caps;
+            }
+        }
+
+        /// <summary>
+        ///     Gets a boolean value indicating NVLink support for this GPU when capability data is available.
+        /// </summary>
+        public bool IsNVLinkSupported
+        {
+            get => NVLinkCapabilities?.IsSupported == true;
+        }
+
+        /// <summary>
         ///     Gets GPU full name
         /// </summary>
         public string FullName
@@ -260,6 +302,97 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         public GPUUsageInformation UsageInformation { get; }
 
+        /// <summary>
+        ///     Tries to capture a power telemetry snapshot without throwing when specific telemetry capabilities are unavailable.
+        /// </summary>
+        /// <param name="snapshot">Power telemetry snapshot when at least one telemetry source is available.</param>
+        /// <returns>True when at least one power telemetry source is available; otherwise false.</returns>
+        public bool TryGetPowerTelemetrySnapshot(out GPUPowerTelemetrySnapshot? snapshot)
+        {
+            var hasTopology = PowerTopologyInformation.TryGetPowerTopologyEntries(out var topologyEntries);
+
+            var hasPerformanceState = GPUApi.TryGetCurrentPerformanceState(Handle, out var currentPerformanceState);
+            var hasPerformancePoliciesStatus =
+                GPUApi.TryGetPerformancePoliciesStatus(Handle, out var performancePoliciesStatus);
+            var hasPerformanceDecreaseReason =
+                GPUApi.TryGetPerformanceDecreaseInfo(Handle, out var performanceDecreaseReason);
+
+            var hasPowerPolicyStatus = GPUApi.TryClientPowerPoliciesGetStatus(Handle, out var powerPolicyStatus);
+            var hasPowerPolicyInfo = GPUApi.TryClientPowerPoliciesGetInfo(Handle, out var powerPolicyInfo);
+
+            var powerLimitPolicies = hasPowerPolicyStatus
+                ? powerPolicyStatus.PowerPolicyStatusEntries
+                    .Select(entry => new GPUPowerLimitPolicy(entry))
+                    .ToArray()
+                : Array.Empty<GPUPowerLimitPolicy>();
+
+            var powerLimitInformation = hasPowerPolicyInfo
+                ? powerPolicyInfo.PowerPolicyInfoEntries
+                    .Select(entry => new GPUPowerLimitInfo(entry))
+                    .ToArray()
+                : Array.Empty<GPUPowerLimitInfo>();
+
+            var hasAnyData = hasTopology ||
+                             hasPerformanceState ||
+                             hasPerformancePoliciesStatus ||
+                             hasPerformanceDecreaseReason ||
+                             powerLimitPolicies.Length > 0 ||
+                             powerLimitInformation.Length > 0;
+
+            if (!hasAnyData)
+            {
+                snapshot = null;
+                return false;
+            }
+
+            snapshot = new GPUPowerTelemetrySnapshot(
+                this,
+                DateTimeOffset.UtcNow,
+                hasPerformanceState ? (PerformanceStateId?) currentPerformanceState : null,
+                hasPerformancePoliciesStatus ? (PerformanceLimit?) performancePoliciesStatus.PerformanceLimit : null,
+                hasPerformanceDecreaseReason ? (PerformanceDecreaseReason?) performanceDecreaseReason : null,
+                topologyEntries,
+                powerLimitPolicies,
+                powerLimitInformation
+            );
+
+            return true;
+        }
+
+        /// <summary>
+        ///     Tries to estimate current board power usage in watts from NVAPI board-domain power percentage telemetry.
+        /// </summary>
+        /// <param name="boardPowerLimitInWatts">Reference board power limit in watts (TGP/TDP).</param>
+        /// <param name="estimatedPowerUsageInWatts">Estimated board power usage in watts when available.</param>
+        /// <returns>True when board-domain telemetry is available; otherwise false.</returns>
+        public bool TryGetEstimatedBoardPowerUsageInWatts(
+            double boardPowerLimitInWatts,
+            out double estimatedPowerUsageInWatts)
+        {
+            return PowerTopologyInformation.TryGetEstimatedPowerUsageInWatts(
+                PowerTopologyDomain.Board,
+                boardPowerLimitInWatts,
+                out estimatedPowerUsageInWatts
+            );
+        }
+
+        /// <summary>
+        ///     Tries to estimate current GPU-domain power usage in watts from NVAPI GPU-domain power percentage telemetry.
+        /// </summary>
+        /// <param name="gpuPowerLimitInWatts">Reference GPU-domain power limit in watts.</param>
+        /// <param name="estimatedPowerUsageInWatts">Estimated GPU-domain power usage in watts when available.</param>
+        /// <returns>True when GPU-domain telemetry is available; otherwise false.</returns>
+        public bool TryGetEstimatedGPUPowerUsageInWatts(
+            double gpuPowerLimitInWatts,
+            out double estimatedPowerUsageInWatts)
+        {
+            return PowerTopologyInformation.TryGetEstimatedPowerUsageInWatts(
+                PowerTopologyDomain.GPU,
+                gpuPowerLimitInWatts,
+                out estimatedPowerUsageInWatts
+            );
+        }
+
         /// <inheritdoc />
         public bool Equals(PhysicalGPU other)
         {
@@ -299,6 +432,20 @@ namespace NvAPIWrapper.GPU
         /// <returns>An array of physical GPUs</returns>
         public static PhysicalGPU[] GetPhysicalGPUs()
         {
+            if (GPUApi.TryGetPhysicalGPUHandleData(out var handleData))
+            {
+                var handles = handleData
+                    .Select(data => data.PhysicalGPUHandle)
+                    .Where(handle => !handle.IsNull)
+                    .Distinct()
+                    .ToArray();
+
+                if (handles.Length > 0)
+                {
+                    return handles.Select(handle => new PhysicalGPU(handle)).ToArray();
+                }
+            }
+
             return GPUApi.EnumPhysicalGPUs().Select(handle => new PhysicalGPU(handle)).ToArray();
         }
 
@@ -308,6 +455,21 @@ namespace NvAPIWrapper.GPU
         /// <returns>An array of physical GPUs</returns>
         public static PhysicalGPU[] GetTCCPhysicalGPUs()
         {
+            if (GPUApi.TryGetPhysicalGPUHandleData(out var handleData))
+            {
+                var handles = handleData
+                    .Where(data => (data.AdapterType & AdapterType.TCC) == AdapterType.TCC)
+                    .Select(data => data.PhysicalGPUHandle)
+                    .Where(handle => !handle.IsNull)
+                    .Distinct()
+                    .ToArray();
+
+                if (handles.Length > 0)
+                {
+                    return handles.Select(handle => new PhysicalGPU(handle)).ToArray();
+                }
+            }
+
             return GPUApi.EnumTCCPhysicalGPUs().Select(handle => new PhysicalGPU(handle)).ToArray();
         }
 

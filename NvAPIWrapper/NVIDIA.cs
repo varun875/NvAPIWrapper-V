@@ -39,6 +39,14 @@ namespace NvAPIWrapper
         }
 
         /// <summary>
+        ///     Gets detailed NVIDIA display driver package information.
+        /// </summary>
+        public static DisplayDriverInfoV2 DisplayDriverInfo
+        {
+            get => GeneralApi.GetDisplayDriverInfo();
+        }
+
+        /// <summary>
         ///     Gets NVAPI interface version as string
         /// </summary>
         public static string InterfaceVersionString
@@ -60,6 +68,16 @@ namespace NvAPIWrapper
         public static void Initialize()
         {
             GeneralApi.Initialize();
+        }
+
+        /// <summary>
+        ///     Tries to get detailed NVIDIA display driver package information.
+        /// </summary>
+        /// <param name="driverInfo">Returned driver package information when available.</param>
+        /// <returns>True when this information is supported and available.</returns>
+        public static bool TryGetDisplayDriverInfo(out DisplayDriverInfoV2 driverInfo)
+        {
+            return GeneralApi.TryGetDisplayDriverInfo(out driverInfo);
         }
 
         /// <summary>

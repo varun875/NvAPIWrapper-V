@@ -59,6 +59,14 @@ namespace NvAPIWrapper.GPU
                     v = "PCIe 3.0";
 
                     break;
+                case PCIeGeneration.PCIe4:
+                    v = "PCIe 4.0";
+
+                    break;
+                case PCIeGeneration.PCIe5:
+                    v = "PCIe 5.0";
+
+                    break;
             }
 
             return $"{v} x{Lanes} - {TransferRateInMTps} MTps";

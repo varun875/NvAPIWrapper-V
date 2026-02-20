@@ -1,22 +1,35 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
-    <Version>0.8.1.101</Version>
+    <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <Version>9.0.1</Version>
     <Company>falahati.net</Company>
-    <Description>NvAPIWrapper is a .Net wrapper for NVIDIA public API</Description>
-    <Authors>Soroush Falahati</Authors>
-    <Copyright>Copyright © Soroush Falahati 2018 (falahati.net)</Copyright>
+    <Description>NvAPIWrapper is a comprehensive .NET wrapper for the NVIDIA public API, featuring full support for RTX 40 (Ada) and RTX 50 (Blackwell) series. Now includes real-time power telemetry in Watts, automatic TDP detection, and modern C# features.</Description>
+    <Authors>Soroush Falahati, Varun</Authors>
+    <Copyright>Copyright © Soroush Falahati 2018 - 2026</Copyright>
     <Platforms>AnyCPU</Platforms>
     <Product>NvAPIWrapper.Net</Product>
-    <PackageProjectUrl>https://github.com/falahati/NvAPIWrapper</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/falahati/NvAPIWrapper/blob/master/LICENSE</PackageLicenseUrl>
-    <PackageIconUrl>https://github.com/falahati/NvAPIWrapper/blob/master/NvAPIWrapper/Icon.png?raw=true</PackageIconUrl>
+    <PackageProjectUrl>https://github.com/varun875/NvAPIWrapper-V</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/varun875/NvAPIWrapper-V</RepositoryUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIcon>Icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>nvidia;tesla;fermi;kepler;maxwell;pascal;turing;ampere;ada;blackwell;gpu;nvapi;monitoring;overclocking;cooling;power;watts;rtx40;rtx50</PackageTags>
+    <PackageReleaseNotes>
+🚀 Version 9.0.1 Major Update:
+- Added full support for RTX 40 (Ada Lovelace) and RTX 50 (Blackwell) series.
+- New Real-time Power Telemetry: Get Board &amp; GPU power usage in Watts automatically.
+- Built-in TDP Database: Automatic power limit resolution for 60+ GPU models.
+- Modernized Enums: Added GDDR6/6X/7, HBM3, AIO Coolers, and new Foundry types.
+- Improved Throttle Detection: Precise flags for Power, Thermal, Voltage, and No-Load limits.
+    </PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <IncludeSource>true</IncludeSource>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <Title>NvAPIWrapper (for NVAPI 410)</Title>
-    <PackageId>NvAPIWrapper.Net</PackageId>
+    <Title>NvAPIWrapper (RTX 40/50 Support)</Title>
+    <PackageId>Varun.NvAPIWrapper.Net</PackageId>
     <AssemblyOriginatorKeyFile>OpenSourceStrongNameSignKey.pfx</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -30,7 +43,7 @@
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference PrivateAssets="all" Include="MSBump" Version="2.3.2">
+    <PackageReference PrivateAssets="all" Include="MSBump" Version="2.3.2" Condition="'$(MSBuildRuntimeType)' != 'Core'">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
@@ -44,6 +57,14 @@
       <Pack>true</Pack>
       <PackagePath>\</PackagePath>
     </Content>
+    <None Include="..\LICENSE" Link="LICENSE">
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md" Link="README.md">
+      <Pack>true</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />

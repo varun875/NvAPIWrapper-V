@@ -57,6 +57,20 @@ namespace NvAPIWrapper.GPU
         /// <returns>An array of logical GPUs</returns>
         public static LogicalGPU[] GetLogicalGPUs()
         {
+            if (GPUApi.TryGetLogicalGPUHandleData(out var handleData))
+            {
+                var handles = handleData
+                    .Select(data => data.LogicalGPUHandle)
+                    .Where(handle => !handle.IsNull)
+                    .Distinct()
+                    .ToArray();
+
+                if (handles.Length > 0)
+                {
+                    return handles.Select(handle => new LogicalGPU(handle)).ToArray();
+                }
+            }
+
             return GPUApi.EnumLogicalGPUs().Select(handle => new LogicalGPU(handle)).ToArray();
         }
 

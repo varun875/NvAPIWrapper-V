@@ -366,6 +366,18 @@ namespace NvAPIWrapper.Native.Delegates
             [In] PhysicalGPUHandle physicalGpu,
             [Out] out GPUType gpuType);
 
+        [FunctionId(FunctionId.NvAPI_GPU_GetGspFeatures)]
+        public delegate Status NvAPI_GPU_GetGspFeatures(
+            [In] PhysicalGPUHandle physicalGpu,
+            [Accepts(typeof(GSPInfoV1))] [In]
+            ValueTypeReference gspInfo);
+
+        [FunctionId(FunctionId.NvAPI_GPU_NVLINK_GetCaps)]
+        public delegate Status NvAPI_GPU_NVLINK_GetCaps(
+            [In] PhysicalGPUHandle physicalGpu,
+            [Accepts(typeof(NVLinkGetCapsV1))] [In]
+            ValueTypeReference caps);
+
         [FunctionId(FunctionId.NvAPI_GPU_GetIllumination)]
         public delegate Status NvAPI_GPU_GetIllumination(
             [Accepts(typeof(GetIlluminationParameterV1))] [In]
@@ -722,5 +734,15 @@ namespace NvAPIWrapper.Native.Delegates
         public delegate Status NvAPI_SYS_GetPhysicalGpuFromDisplayId(
             [In] uint displayId,
             [Out] out PhysicalGPUHandle gpu);
+
+        [FunctionId(FunctionId.NvAPI_SYS_GetPhysicalGPUs)]
+        public delegate Status NvAPI_SYS_GetPhysicalGPUs(
+            [Accepts(typeof(PhysicalGPUsV1))] [In]
+            ValueTypeReference physicalGpus);
+
+        [FunctionId(FunctionId.NvAPI_SYS_GetLogicalGPUs)]
+        public delegate Status NvAPI_SYS_GetLogicalGPUs(
+            [Accepts(typeof(LogicalGPUsV1))] [In]
+            ValueTypeReference logicalGpus);
     }
 }

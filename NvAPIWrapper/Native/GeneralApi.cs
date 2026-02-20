@@ -11,7 +11,7 @@ namespace NvAPIWrapper.Native
     /// <summary>
     ///     Contains system and general static functions
     /// </summary>
-    public static class GeneralApi
+    public static partial class GeneralApi
     {
         /// <summary>
         ///     This function returns information about the system's chipset.
