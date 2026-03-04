@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
 
@@ -61,7 +61,7 @@ namespace NvAPIWrapper.Native.Display.Structures
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is ColorDataColorCoordinate other && Equals(other);
         }

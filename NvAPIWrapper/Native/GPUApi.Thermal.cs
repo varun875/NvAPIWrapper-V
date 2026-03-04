@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NvAPIWrapper.Native.Exceptions;
 using NvAPIWrapper.Native.General;
 using NvAPIWrapper.Native.GPU;
@@ -242,11 +242,11 @@ namespace NvAPIWrapper.Native
         public static void RestoreCoolerPolicyTable(
             PhysicalGPUHandle gpuHandle,
             CoolerPolicy policy,
-            uint[] indexes = null)
+            uint[]? indexes = null)
         {
             var status = DelegateFactory.GetDelegate<Delegates.GPU.NvAPI_GPU_RestoreCoolerPolicyTable>()(
                 gpuHandle,
-                indexes,
+                indexes ?? Array.Empty<uint>(),
                 (uint) (indexes?.Length ?? 0),
                 policy
             );
@@ -265,11 +265,11 @@ namespace NvAPIWrapper.Native
         /// <param name="indexes">The indexes of the coolers to restore their settings to default.</param>
         public static void RestoreCoolerSettings(
             PhysicalGPUHandle gpuHandle,
-            uint[] indexes = null)
+            uint[]? indexes = null)
         {
             var status = DelegateFactory.GetDelegate<Delegates.GPU.NvAPI_GPU_RestoreCoolerSettings>()(
                 gpuHandle,
-                indexes,
+                indexes ?? Array.Empty<uint>(),
                 (uint) (indexes?.Length ?? 0)
             );
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using NvAPIWrapper.GPU;
 using NvAPIWrapper.Native.Mosaic;
@@ -33,7 +33,7 @@ namespace NvAPIWrapper.Mosaic
         /// <summary>
         ///     Gets the logical GPU in charge of controling the topology
         /// </summary>
-        public LogicalGPU LogicalGPU { get; }
+        public LogicalGPU? LogicalGPU { get; }
 
         /// <summary>
         ///     Gets the number of rows in the topology
@@ -46,7 +46,7 @@ namespace NvAPIWrapper.Mosaic
         public TopologyValidity ValidityFlags { get; }
 
         /// <inheritdoc />
-        public bool Equals(TopologyDetails other)
+        public bool Equals(TopologyDetails? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -60,7 +60,7 @@ namespace NvAPIWrapper.Mosaic
 
             return Rows == other.Rows &&
                    Columns == other.Columns &&
-                   LogicalGPU.Equals(other.LogicalGPU) &&
+                     Equals(LogicalGPU, other.LogicalGPU) &&
                    Displays.SequenceEqual(other.Displays);
         }
 
@@ -87,7 +87,7 @@ namespace NvAPIWrapper.Mosaic
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 
 namespace NvAPIWrapper.Display
@@ -31,7 +31,7 @@ namespace NvAPIWrapper.Display
         /// <param name="channels">The number of texture channels.</param>
         /// <param name="array">The underlying array containing all float values.</param>
         // ReSharper disable once TooManyDependencies
-        protected FloatTexture(int width, int height, int channels, float[] array)
+        protected FloatTexture(int width, int height, int channels, float[]? array)
         {
             Width = width;
             Height = height;
@@ -55,7 +55,7 @@ namespace NvAPIWrapper.Display
         public int Width { get; }
 
         /// <inheritdoc />
-        public bool Equals(FloatTexture other)
+        public bool Equals(FloatTexture? other)
         {
             if (other == null)
             {
@@ -105,7 +105,7 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first instance.</param>
         /// <param name="right">The second instance.</param>
         /// <returns><see langword="true" /> if both instances are equal, otherwise <see langword="false" /></returns>
-        public static bool operator ==(FloatTexture left, FloatTexture right)
+        public static bool operator ==(FloatTexture? left, FloatTexture? right)
         {
             return Equals(left, right) || left?.Equals(right) == true;
         }
@@ -116,13 +116,13 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first instance.</param>
         /// <param name="right">The second instance.</param>
         /// <returns><see langword="true" /> if both instances are not equal, otherwise <see langword="false" /></returns>
-        public static bool operator !=(FloatTexture left, FloatTexture right)
+        public static bool operator !=(FloatTexture? left, FloatTexture? right)
         {
             return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null)
             {

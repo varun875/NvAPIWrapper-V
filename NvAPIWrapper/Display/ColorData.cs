@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NvAPIWrapper.Native.Display;
 using NvAPIWrapper.Native.Display.Structures;
 using NvAPIWrapper.Native.Interfaces.Display;
@@ -63,7 +63,7 @@ namespace NvAPIWrapper.Display
         public ColorDataSelectionPolicy? SelectionPolicy { get; }
 
         /// <inheritdoc />
-        public bool Equals(ColorData other)
+        public bool Equals(ColorData? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -106,7 +106,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

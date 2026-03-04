@@ -7,6 +7,8 @@ using NvAPIWrapper.Native.Attributes;
 using NvAPIWrapper.Native.General.Structures;
 using NvAPIWrapper.Native.Interfaces;
 
+#nullable disable
+
 namespace NvAPIWrapper.Native.Helpers
 {
     internal static class ExtensionMethods

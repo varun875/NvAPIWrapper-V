@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace NvAPIWrapper.GPU
 {
@@ -39,7 +39,7 @@ namespace NvAPIWrapper.GPU
         public long Minimum { get; }
 
         /// <inheritdoc />
-        public bool Equals(GPUPerformanceStateValueRange other)
+        public bool Equals(GPUPerformanceStateValueRange? other)
         {
             if (other == null)
             {
@@ -60,7 +60,7 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The left side of the comparison.</param>
         /// <param name="right">The right side of the comparison.</param>
         /// <returns>true if instances are equal, otherwise false</returns>
-        public static bool operator ==(GPUPerformanceStateValueRange left, GPUPerformanceStateValueRange right)
+        public static bool operator ==(GPUPerformanceStateValueRange? left, GPUPerformanceStateValueRange? right)
         {
             return Equals(left, right) || left?.Equals(right) == true;
         }
@@ -71,13 +71,13 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The left side of the comparison.</param>
         /// <param name="right">The right side of the comparison.</param>
         /// <returns>true if instances are in-equal, otherwise false</returns>
-        public static bool operator !=(GPUPerformanceStateValueRange left, GPUPerformanceStateValueRange right)
+        public static bool operator !=(GPUPerformanceStateValueRange? left, GPUPerformanceStateValueRange? right)
         {
             return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null)
             {

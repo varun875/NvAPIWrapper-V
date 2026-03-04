@@ -1559,7 +1559,7 @@ namespace NvAPIWrapper.Native
         /// <param name="displayId">Combined physical display and GPU identifier of the display to apply the intensity control.</param>
         /// <param name="scanOutIntensity">The intensity texture info.</param>
         /// <param name="isSticky">Indicates whether the settings will be kept over a reboot.</param>
-        public static void SetScanOutIntensity(uint displayId, IScanOutIntensity scanOutIntensity, out bool isSticky)
+        public static void SetScanOutIntensity(uint displayId, IScanOutIntensity? scanOutIntensity, out bool isSticky)
         {
             Status status;
             int isStickyInt;

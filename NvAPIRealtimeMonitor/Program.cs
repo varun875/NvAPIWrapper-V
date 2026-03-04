@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using NvAPIWrapper;
 using NvAPIWrapper.GPU;
@@ -16,7 +17,8 @@ namespace NvAPIRealtimeMonitor
         // ── Configuration ──────────────────────────────────────
         private const int RefreshIntervalMs = 500;    // Update every 500ms
         private const int HistoryLength = 60;          // 30 seconds of history at 500ms intervals
-        private const int BarWidth = 30;               // Width of progress bars
+        private const int MinWidth = 80;
+        private const int MaxWidth = 120;
 
         // ── ANSI Colors ────────────────────────────────────────
         private const string Reset = "\x1b[0m";
@@ -307,71 +309,86 @@ namespace NvAPIRealtimeMonitor
                 var sb = new StringBuilder(4096);
                 sb.Append("\x1b[H"); // Move cursor to top-left (no flicker)
 
+                // Adaptive width: clamp to [MinWidth, MaxWidth] based on terminal
+                int termWidth;
+                try { termWidth = Console.WindowWidth; } catch { termWidth = 80; }
+                var boxWidth = Math.Max(MinWidth, Math.Min(MaxWidth, termWidth - 2));
+                var innerWidth = boxWidth - 4; // space inside ║ ... ║
+                var BarWidth = Math.Max(10, (boxWidth - 50) / 2);
                 var elapsed = stopwatch.Elapsed;
                 var avgPowerW = _sampleCount > 0 ? _totalPowerW / _sampleCount : 0;
                 var avgTempC = _sampleCount > 0 ? _totalTempC / _sampleCount : 0;
 
+                // Helper: pad content to exactly fit inside the box
+                string PadLine(string content) {
+                    // Strip ANSI codes to measure visible length
+                    var visible = System.Text.RegularExpressions.Regex.Replace(content, @"\x1b\[[0-9;]*m", "");
+                    var pad = innerWidth - visible.Length;
+                    return pad > 0 ? content + new string(' ', pad) : content;
+                }
+                var border = new string('═', boxWidth - 2);
+
                 // ── Header ─────────────────────────────────────
-                sb.AppendLine($"{Bold}{Cyan}╔══════════════════════════════════════════════════════════════════════════════╗{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {Bold}{White}⚡ NvAPIWrapper Realtime GPU Power Monitor{Reset}                                  {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}╠══════════════════════════════════════════════════════════════════════════════╣{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}GPU:{Reset} {Bold}{White}{Truncate(gpuName, 40),-40}{Reset}  {DarkGray}Arch:{Reset} {Yellow}{archName,-12}{Reset}     {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}VRAM:{Reset} {Green}{vramTotal,-10}{Reset} {DarkGray}Type:{Reset} {Green}{memType,-10}{Reset} {DarkGray}TDP:{Reset} {Magenta}{Truncate(tdpInfo, 30),-30}{Reset}  {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Uptime:{Reset} {Blue}{elapsed:hh\\:mm\\:ss}{Reset}  {DarkGray}Samples:{Reset} {Blue}{_sampleCount,-8}{Reset} {DarkGray}State:{Reset} {Yellow}{perfState,-24}{Reset}  {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}╠══════════════════════════════════════════════════════════════════════════════╣{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╔{border}╗{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{White}⚡ NvAPIWrapper Realtime GPU Power Monitor{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU:{Reset} {Bold}{White}{Truncate(gpuName, 40)}{Reset}  {DarkGray}Arch:{Reset} {Yellow}{archName}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}VRAM:{Reset} {Green}{vramTotal}{Reset} {DarkGray}Type:{Reset} {Green}{memType}{Reset} {DarkGray}TDP:{Reset} {Magenta}{Truncate(tdpInfo, 30)}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Uptime:{Reset} {Blue}{elapsed:hh\\:mm\\:ss}{Reset}  {DarkGray}Samples:{Reset} {Blue}{_sampleCount}{Reset} {DarkGray}State:{Reset} {Yellow}{perfState}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
                 // ── Power Section ──────────────────────────────
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {Bold}{Yellow}⚡ POWER{Reset}                                                                   {Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{Yellow}⚡ POWER{Reset}")}{Bold}{Cyan}║{Reset}");
 
                 if (powerSpec != null && telemetryAvailable)
                 {
                     var powerPct = powerLimitW > 0 ? (boardPowerW / powerLimitW * 100) : boardPowerPct;
                     var powerColor = powerPct > 95 ? Red : powerPct > 80 ? Yellow : Green;
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Board Power:{Reset}  {powerColor}{Bold}{boardPowerW,7:F1} W{Reset} / {powerLimitW:F0}W  {RenderBar(powerPct, BarWidth, powerColor)}  {Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}GPU Power:{Reset}    {Cyan}{gpuPowerW,7:F1} W{Reset}                                                    {Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Peak:{Reset} {Red}{_peakPowerW,6:F1}W{Reset}  {DarkGray}Avg:{Reset} {Blue}{avgPowerW,6:F1}W{Reset}  {DarkGray}Limit:{Reset} {Magenta}{powerLimitW:F0}W{Reset}                              {Bold}{Cyan}║{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Board Power:{Reset}  {powerColor}{Bold}{boardPowerW,7:F1} W{Reset} / {powerLimitW:F0}W  {RenderBar(powerPct, BarWidth, powerColor)}")}{Bold}{Cyan}║{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU Power:{Reset}    {Cyan}{gpuPowerW,7:F1} W{Reset}")}{Bold}{Cyan}║{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Peak:{Reset} {Red}{_peakPowerW,6:F1}W{Reset}  {DarkGray}Avg:{Reset} {Blue}{avgPowerW,6:F1}W{Reset}  {DarkGray}Limit:{Reset} {Magenta}{powerLimitW:F0}W{Reset}")}{Bold}{Cyan}║{Reset}");
                 }
                 else
                 {
                     var powerColor = boardPowerPct > 95 ? Red : boardPowerPct > 80 ? Yellow : Green;
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Board Power:{Reset}  {powerColor}{Bold}{boardPowerPct,6:F1}%{Reset}   {RenderBar(boardPowerPct, BarWidth, powerColor)}                       {Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}(TDP unknown — use GPUPowerSpecDatabase.RegisterSpec() for watts){Reset}             {Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}                                                                              {Bold}{Cyan}║{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Board Power:{Reset}  {powerColor}{Bold}{boardPowerPct,6:F1}%{Reset}   {RenderBar(boardPowerPct, BarWidth, powerColor)}")}{Bold}{Cyan}║{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}(TDP unknown — use GPUPowerSpecDatabase.RegisterSpec() for watts){Reset}")}{Bold}{Cyan}║{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine("")}{Bold}{Cyan}║{Reset}");
                 }
 
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Sparkline (30s):{Reset} {RenderSparkline(PowerHistory, Cyan)}                           {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}╠══════════════════════════════════════════════════════════════════════════════╣{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Sparkline (30s):{Reset} {RenderSparkline(PowerHistory, Cyan)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
                 // ── GPU Usage Section ──────────────────────────
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {Bold}{Green}📊 UTILIZATION{Reset}                                                             {Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{Green}📊 UTILIZATION{Reset}")}{Bold}{Cyan}║{Reset}");
                 var gpuColor = gpuUsagePct > 95 ? Red : gpuUsagePct > 75 ? Yellow : Green;
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}GPU Core:{Reset}     {gpuColor}{Bold}{gpuUsagePct,6:F1}%{Reset}   {RenderBar(gpuUsagePct, BarWidth, gpuColor)}  {DarkGray}Peak:{Reset} {Red}{_peakGpuUsage:F0}%{Reset}    {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Memory Ctrl:{Reset}  {Blue}{memUsagePct,6:F1}%{Reset}   {RenderBar(memUsagePct, BarWidth, Blue)}              {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Video Enc:{Reset}    {Magenta}{videoUsagePct,6:F1}%{Reset}   {RenderBar(videoUsagePct, BarWidth, Magenta)}              {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Sparkline (30s):{Reset} {RenderSparkline(GpuUsageHistory, Green)}                           {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}╠══════════════════════════════════════════════════════════════════════════════╣{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU Core:{Reset}     {gpuColor}{Bold}{gpuUsagePct,6:F1}%{Reset}   {RenderBar(gpuUsagePct, BarWidth, gpuColor)}  {DarkGray}Peak:{Reset} {Red}{_peakGpuUsage:F0}%{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Memory Ctrl:{Reset}  {Blue}{memUsagePct,6:F1}%{Reset}   {RenderBar(memUsagePct, BarWidth, Blue)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Video Enc:{Reset}    {Magenta}{videoUsagePct,6:F1}%{Reset}   {RenderBar(videoUsagePct, BarWidth, Magenta)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Sparkline (30s):{Reset} {RenderSparkline(GpuUsageHistory, Green)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
                 // ── Temperature Section ────────────────────────
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {Bold}{Red}🌡️  THERMALS{Reset}                                                               {Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{Red}🌡️  THERMALS{Reset}")}{Bold}{Cyan}║{Reset}");
                 var tempMax = powerSpec != null ? 90 : 100; // estimate
                 var tempPct = tempMax > 0 ? gpuTempC / tempMax * 100 : 0;
                 var tempColor = gpuTempC > 85 ? Red : gpuTempC > 70 ? Yellow : Green;
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}GPU Temp:{Reset}     {tempColor}{Bold}{gpuTempC,5:F0}°C{Reset}    {RenderBar(tempPct, BarWidth, tempColor)}  {DarkGray}Peak:{Reset} {Red}{_peakTempC:F0}°C{Reset}   {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Avg Temp:{Reset}     {Blue}{avgTempC,5:F1}°C{Reset}    {DarkGray}Fan:{Reset} {Cyan}{fanSpeedPct:F0}%{Reset}  {RenderBar(fanSpeedPct, 15, Cyan)}                  {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Sparkline (30s):{Reset} {RenderSparkline(TempHistory, Red)}                           {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}╠══════════════════════════════════════════════════════════════════════════════╣{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU Temp:{Reset}     {tempColor}{Bold}{gpuTempC,5:F0}°C{Reset}    {RenderBar(tempPct, BarWidth, tempColor)}  {DarkGray}Peak:{Reset} {Red}{_peakTempC:F0}°C{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Avg Temp:{Reset}     {Blue}{avgTempC,5:F1}°C{Reset}    {DarkGray}Fan:{Reset} {Cyan}{fanSpeedPct:F0}%{Reset}  {RenderBar(fanSpeedPct, 15, Cyan)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Sparkline (30s):{Reset} {RenderSparkline(TempHistory, Red)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
                 // ── Clocks Section ─────────────────────────────
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {Bold}{Magenta}🔧 CLOCKS & MEMORY{Reset}                                                        {Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{Magenta}🔧 CLOCKS & MEMORY{Reset}")}{Bold}{Cyan}║{Reset}");
                 var clockMaxEstimate = _peakClockMHz > 0 ? _peakClockMHz * 1.1 : 3000;
                 var clockPct = clockMaxEstimate > 0 ? graphicsClockMHz / clockMaxEstimate * 100 : 0;
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Graphics:{Reset}     {Yellow}{Bold}{graphicsClockMHz,6:F0} MHz{Reset} {RenderBar(clockPct, BarWidth, Yellow)}  {DarkGray}Peak:{Reset} {Red}{_peakClockMHz:F0}{Reset}  {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Memory:{Reset}       {Blue}{memClockMHz,6:F0} MHz{Reset}                                                   {Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Graphics:{Reset}     {Yellow}{Bold}{graphicsClockMHz,6:F0} MHz{Reset} {RenderBar(clockPct, BarWidth, Yellow)}  {DarkGray}Peak:{Reset} {Red}{_peakClockMHz:F0}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Memory:{Reset}       {Blue}{memClockMHz,6:F0} MHz{Reset}")}{Bold}{Cyan}║{Reset}");
                 var vramPct = vramTotalMB > 0 ? vramUsedMB / vramTotalMB * 100 : 0;
                 var vramColor = vramPct > 90 ? Red : vramPct > 75 ? Yellow : Green;
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}VRAM Used:{Reset}    {vramColor}{vramUsedMB,6:F0} MB{Reset} / {vramTotalMB:F0} MB {RenderBar(vramPct, 20, vramColor)}              {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {DarkGray}Sparkline (30s):{Reset} {RenderSparkline(ClockHistory, Yellow)}                           {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}╠══════════════════════════════════════════════════════════════════════════════╣{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}VRAM Used:{Reset}    {vramColor}{vramUsedMB,6:F0} MB{Reset} / {vramTotalMB:F0} MB {RenderBar(vramPct, 20, vramColor)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Sparkline (30s):{Reset} {RenderSparkline(ClockHistory, Yellow)}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
                 // ── Throttle Status ────────────────────────────
                 var throttleColor = throttleStatus.Contains("No Throttling") ? Green :
@@ -382,8 +399,8 @@ namespace NvAPIRealtimeMonitor
                     isPowerThrottled ? "⚡" :
                     isThermalThrottled ? "🌡️" : "⚠️";
 
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {throttleIcon} {DarkGray}Throttle:{Reset} {throttleColor}{Bold}{Truncate(throttleStatus, 60),-60}{Reset}       {Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}╚══════════════════════════════════════════════════════════════════════════════╝{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{throttleIcon} {DarkGray}Throttle:{Reset} {throttleColor}{Bold}{Truncate(throttleStatus, 60)}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}╚{border}╝{Reset}");
                 sb.AppendLine();
                 sb.AppendLine($"  {DarkGray}[Q] Quit  [R] Reset Stats{Reset}");
 

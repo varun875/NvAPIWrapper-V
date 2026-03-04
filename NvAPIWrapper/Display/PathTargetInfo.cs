@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using NvAPIWrapper.Native.Display;
 using NvAPIWrapper.Native.Display.Structures;
@@ -141,7 +141,7 @@ namespace NvAPIWrapper.Display
         /// </summary>
         /// <param name="other">The PathTargetInfo object to check with</param>
         /// <returns>true if both objects are equal, otherwise false</returns>
-        public bool Equals(PathTargetInfo other)
+        public bool Equals(PathTargetInfo? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -190,7 +190,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

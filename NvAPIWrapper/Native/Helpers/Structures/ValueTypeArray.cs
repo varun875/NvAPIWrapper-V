@@ -4,6 +4,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using NvAPIWrapper.Native.Interfaces;
 
+#nullable disable
+
 namespace NvAPIWrapper.Native.Helpers.Structures
 {
     [StructLayout(LayoutKind.Sequential)]

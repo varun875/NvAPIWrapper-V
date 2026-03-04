@@ -358,7 +358,7 @@ namespace NvAPIWrapper.Native
         ///     This API retrieves the current default stereo profile.
         /// </summary>
         /// <returns>Default stereo profile name.</returns>
-        public static string GetDefaultProfile()
+        public static string? GetDefaultProfile()
         {
             var stringCapacity = 256;
             var stringAddress = Marshal.AllocHGlobal(stringCapacity);

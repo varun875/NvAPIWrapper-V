@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace NvAPIWrapper.Mosaic
 {
@@ -45,7 +45,7 @@ namespace NvAPIWrapper.Mosaic
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

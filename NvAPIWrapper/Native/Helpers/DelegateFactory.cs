@@ -5,6 +5,8 @@ using System.Runtime.InteropServices;
 using NvAPIWrapper.Native.Attributes;
 using NvAPIWrapper.Native.Exceptions;
 
+#nullable disable
+
 namespace NvAPIWrapper.Native.Helpers
 {
     internal static class DelegateFactory

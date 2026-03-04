@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace NvAPIWrapper.GPU
 {
@@ -52,8 +52,13 @@ namespace NvAPIWrapper.GPU
         public ushort VendorId { get; }
 
         /// <inheritdoc />
-        public bool Equals(PCIIdentifiers other)
+        public bool Equals(PCIIdentifiers? other)
         {
+            if (other == null)
+            {
+                return false;
+            }
+
             return DeviceId == other.DeviceId &&
                    SubSystemId == other.SubSystemId &&
                    RevisionId == other.RevisionId;
@@ -65,9 +70,9 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are equal, otherwise false</returns>
-        public static bool operator ==(PCIIdentifiers left, PCIIdentifiers right)
+        public static bool operator ==(PCIIdentifiers? left, PCIIdentifiers? right)
         {
-            return left.Equals(right);
+            return right?.Equals(left) ?? ReferenceEquals(left, null);
         }
 
         /// <summary>
@@ -76,13 +81,13 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are not equal, otherwise false</returns>
-        public static bool operator !=(PCIIdentifiers left, PCIIdentifiers right)
+        public static bool operator !=(PCIIdentifiers? left, PCIIdentifiers? right)
         {
-            return !left.Equals(right);
+            return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using NvAPIWrapper.Native.Attributes;
 using NvAPIWrapper.Native.General.Structures;
@@ -35,11 +35,11 @@ namespace NvAPIWrapper.Native.DRS.Structures
         // ReSharper disable once TooManyDependencies
         public DRSApplicationV4(
             string applicationName,
-            string friendlyName = null,
-            string launcherName = null,
-            string[] fileInFolders = null,
+            string? friendlyName = null,
+            string? launcherName = null,
+            string[]? fileInFolders = null,
             bool isMetro = false,
-            string commandLine = null
+            string? commandLine = null
         )
         {
             this = typeof(DRSApplicationV4).Instantiate<DRSApplicationV4>();
@@ -102,7 +102,7 @@ namespace NvAPIWrapper.Native.DRS.Structures
             {
                 if (string.IsNullOrEmpty(value))
                 {
-                    _CommandLine = new UnicodeString(null);
+                    _CommandLine = new UnicodeString(string.Empty);
 
                     if (HasCommandLine)
                     {

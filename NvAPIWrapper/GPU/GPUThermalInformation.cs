@@ -4,6 +4,7 @@ using System.Linq;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.Exceptions;
 using NvAPIWrapper.Native.General;
+using NvAPIWrapper.Native.Helpers;
 
 namespace NvAPIWrapper.GPU
 {
@@ -59,7 +60,7 @@ namespace NvAPIWrapper.GPU
                 currentThermalLevel = 0;
                 return false;
             }
-            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            catch (NVIDIAApiException ex) when (NvApiStatusHelper.IsCapabilityUnavailable(ex.Status))
             {
                 currentThermalLevel = 0;
                 return false;
@@ -83,19 +84,12 @@ namespace NvAPIWrapper.GPU
                 thermalSensors = Array.Empty<GPUThermalSensor>();
                 return false;
             }
-            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            catch (NVIDIAApiException ex) when (NvApiStatusHelper.IsCapabilityUnavailable(ex.Status))
             {
                 thermalSensors = Array.Empty<GPUThermalSensor>();
                 return false;
             }
         }
 
-        private static bool IsCapabilityUnavailableStatus(Status status)
-        {
-            return status == Status.NotSupported ||
-                   status == Status.NoImplementation ||
-                   status == Status.FunctionNotFound;
-        }
     }
 }
-

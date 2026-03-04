@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NvAPIWrapper.GPU;
@@ -137,7 +137,7 @@ namespace NvAPIWrapper.Display
         /// <summary>
         ///     Gets the monitor Display port capabilities
         /// </summary>
-        public MonitorColorData[] DisplayPortColorCapabilities
+        public MonitorColorData[]? DisplayPortColorCapabilities
         {
             get
             {
@@ -391,7 +391,7 @@ namespace NvAPIWrapper.Display
         /// <summary>
         ///     Gets the HDR color data, or null if the HDR is disabled or unavailable
         /// </summary>
-        public HDRColorData HDRColorData
+        public HDRColorData? HDRColorData
         {
             get
             {
@@ -512,7 +512,7 @@ namespace NvAPIWrapper.Display
         /// <summary>
         ///     Gets information regarding the scan-out settings of this display device
         /// </summary>
-        public ScanOutInformation ScanOutInformation { get; }
+        public ScanOutInformation? ScanOutInformation { get; }
 
         /// <summary>
         ///     Gets monitor capabilities from the Video Capability Data Block if available, otherwise null
@@ -531,7 +531,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public bool Equals(DisplayDevice other)
+        public bool Equals(DisplayDevice? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -561,7 +561,7 @@ namespace NvAPIWrapper.Display
         ///     Returns an instance of <see cref="DisplayDevice" /> representing the primary GDI display device.
         /// </summary>
         /// <returns>An instance of <see cref="DisplayDevice" />.</returns>
-        public static DisplayDevice GetGDIPrimaryDisplayDevice()
+        public static DisplayDevice? GetGDIPrimaryDisplayDevice()
         {
             var displayId = DisplayApi.GetGDIPrimaryDisplayId();
 
@@ -579,7 +579,7 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are equal, otherwise false</returns>
-        public static bool operator ==(DisplayDevice left, DisplayDevice right)
+        public static bool operator ==(DisplayDevice? left, DisplayDevice? right)
         {
             return right?.Equals(left) ?? ReferenceEquals(left, null);
         }
@@ -590,7 +590,7 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are not equal, otherwise false</returns>
-        public static bool operator !=(DisplayDevice left, DisplayDevice right)
+        public static bool operator !=(DisplayDevice? left, DisplayDevice? right)
         {
             return !(right == left);
         }
@@ -640,7 +640,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

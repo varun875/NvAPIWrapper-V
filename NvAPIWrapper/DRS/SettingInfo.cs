@@ -7,6 +7,8 @@ using System.Reflection;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.DRS;
 
+#nullable disable
+
 namespace NvAPIWrapper.DRS
 {
     /// <summary>

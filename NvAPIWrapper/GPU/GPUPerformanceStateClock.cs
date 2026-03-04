@@ -80,7 +80,7 @@ namespace NvAPIWrapper.GPU
         /// <summary>
         ///     Gets the dependent voltage range in uV
         /// </summary>
-        public GPUPerformanceStateValueRange DependentVoltageRangeInMicroVolt { get; }
+        public GPUPerformanceStateValueRange? DependentVoltageRangeInMicroVolt { get; }
 
         /// <summary>
         ///     Gets a boolean value indicating if this clock setting is readonly

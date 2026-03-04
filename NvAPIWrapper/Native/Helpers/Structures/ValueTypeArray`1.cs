@@ -51,7 +51,7 @@ namespace NvAPIWrapper.Native.Helpers.Structures
             return underlyingArray.Equals(other.underlyingArray);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

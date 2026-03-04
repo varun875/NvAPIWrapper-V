@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace NvAPIWrapper.Display
@@ -59,7 +59,7 @@ namespace NvAPIWrapper.Display
         public int Y { get; }
 
         /// <inheritdoc />
-        public bool Equals(XYUVRQVortex other)
+        public bool Equals(XYUVRQVortex? other)
         {
             if (other == null)
             {
@@ -105,7 +105,7 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first instance.</param>
         /// <param name="right">The second instance.</param>
         /// <returns><see langword="true" /> if both instances are equal, otherwise <see langword="false" /></returns>
-        public static bool operator ==(XYUVRQVortex left, XYUVRQVortex right)
+        public static bool operator ==(XYUVRQVortex? left, XYUVRQVortex? right)
         {
             return Equals(left, right) || left?.Equals(right) == true;
         }
@@ -116,13 +116,13 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first instance.</param>
         /// <param name="right">The second instance.</param>
         /// <returns><see langword="true" /> if both instances are not equal, otherwise <see langword="false" /></returns>
-        public static bool operator !=(XYUVRQVortex left, XYUVRQVortex right)
+        public static bool operator !=(XYUVRQVortex? left, XYUVRQVortex? right)
         {
             return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null)
             {

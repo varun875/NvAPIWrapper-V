@@ -1,6 +1,8 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using NvAPIWrapper.Native.Interfaces;
+
+#nullable disable
 
 namespace NvAPIWrapper.Native.Helpers.Structures
 {

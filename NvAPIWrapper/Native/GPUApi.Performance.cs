@@ -46,7 +46,7 @@ namespace NvAPIWrapper.Native
         /// <exception cref="Exception">A delegate callback throws an exception.</exception>
         public static IClockFrequencies GetAllClockFrequencies(
             PhysicalGPUHandle physicalGPUHandle,
-            IClockFrequencies clockFrequencyOptions = null)
+            IClockFrequencies? clockFrequencyOptions = null)
         {
             var getClocksInfo = DelegateFactory.GetDelegate<Delegates.GPU.NvAPI_GPU_GetAllClockFrequencies>();
 

@@ -1,10 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net461</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
-    <Version>9.0.1</Version>
+    <Version>9.0.2</Version>
     <Company>falahati.net</Company>
     <Description>NvAPIWrapper is a comprehensive .NET wrapper for the NVIDIA public API, featuring full support for RTX 40 (Ada) and RTX 50 (Blackwell) series. Now includes real-time power telemetry in Watts, automatic TDP detection, and modern C# features.</Description>
     <Authors>Soroush Falahati, Varun</Authors>
@@ -40,7 +40,8 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <OutputPath>..\Release</OutputPath>
     <DocumentationFile>..\Release\NvAPIWrapper.xml</DocumentationFile>
-    <SignAssembly>true</SignAssembly>
+    <!-- Strong name signing disabled for .NET Core compatibility -->
+    <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference PrivateAssets="all" Include="MSBump" Version="2.3.2" Condition="'$(MSBuildRuntimeType)' != 'Core'">

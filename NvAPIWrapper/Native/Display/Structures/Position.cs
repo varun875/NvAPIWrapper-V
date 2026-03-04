@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 
 namespace NvAPIWrapper.Native.Display.Structures
@@ -25,7 +25,7 @@ namespace NvAPIWrapper.Native.Display.Structures
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

@@ -2,6 +2,8 @@
 using NvAPIWrapper.Native.DRS;
 using NvAPIWrapper.Native.DRS.Structures;
 
+#nullable disable
+
 namespace NvAPIWrapper.DRS
 {
     /// <summary>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using NvAPIWrapper.Native.Interfaces;
 
@@ -49,7 +49,7 @@ namespace NvAPIWrapper.Native.Helpers.Structures
             return underlyingReference.Equals(other.underlyingReference);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

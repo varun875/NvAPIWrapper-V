@@ -40,7 +40,7 @@ namespace NvAPIWrapper.DRS
         /// <summary>
         ///     Gets the application command line
         /// </summary>
-        public string CommandLine
+        public string? CommandLine
         {
             get
             {
@@ -63,7 +63,7 @@ namespace NvAPIWrapper.DRS
         /// <summary>
         ///     Gets a list of files that are necessary to be present inside the application parent directory
         /// </summary>
-        public string[] FilesInFolder
+        public string[]? FilesInFolder
         {
             get
             {
@@ -235,14 +235,14 @@ namespace NvAPIWrapper.DRS
         public static ProfileApplication CreateApplication(
             DriverSettingsProfile profile,
             string applicationName,
-            string friendlyName = null,
-            string launcherName = null,
-            string[] fileInFolders = null,
+            string? friendlyName = null,
+            string? launcherName = null,
+            string[]? fileInFolders = null,
             bool isMetro = false,
-            string commandLine = null
+            string? commandLine = null
         )
         {
-            var createDelegates = new Func<string, string, string, string[], bool, string, IDRSApplication>[]
+            var createDelegates = new Func<string, string?, string?, string[]?, bool, string?, IDRSApplication>[]
             {
                 CreateApplicationInstanceV4,
                 CreateApplicationInstanceV3,
@@ -250,8 +250,8 @@ namespace NvAPIWrapper.DRS
                 CreateApplicationInstanceV1
             };
 
-            Exception lastException = null;
-            IDRSApplication application = null;
+            Exception? lastException = null;
+            IDRSApplication? application = null;
 
             foreach (var func in createDelegates)
             {
@@ -279,7 +279,7 @@ namespace NvAPIWrapper.DRS
             if (application == null)
             {
                 // ReSharper disable once ThrowingSystemException
-                throw lastException;
+                throw lastException ?? new NVIDIANotSupportedException("No supported DRS application structure version was accepted.");
             }
 
             application = DRSApi.CreateApplication(profile.Session.Handle, profile.Handle, application);
@@ -290,11 +290,11 @@ namespace NvAPIWrapper.DRS
         // ReSharper disable once TooManyArguments
         private static IDRSApplication CreateApplicationInstanceV1(
             string applicationName,
-            string friendlyName = null,
-            string launcherName = null,
-            string[] fileInFolders = null,
+            string? friendlyName = null,
+            string? launcherName = null,
+            string[]? fileInFolders = null,
             bool isMetro = false,
-            string commandLine = null
+            string? commandLine = null
         )
         {
             if (!string.IsNullOrWhiteSpace(commandLine))
@@ -321,11 +321,11 @@ namespace NvAPIWrapper.DRS
         // ReSharper disable once TooManyArguments
         private static IDRSApplication CreateApplicationInstanceV2(
             string applicationName,
-            string friendlyName = null,
-            string launcherName = null,
-            string[] fileInFolders = null,
+            string? friendlyName = null,
+            string? launcherName = null,
+            string[]? fileInFolders = null,
             bool isMetro = false,
-            string commandLine = null
+            string? commandLine = null
         )
         {
             if (!string.IsNullOrWhiteSpace(commandLine))
@@ -346,11 +346,11 @@ namespace NvAPIWrapper.DRS
         // ReSharper disable once TooManyArguments
         private static IDRSApplication CreateApplicationInstanceV3(
             string applicationName,
-            string friendlyName = null,
-            string launcherName = null,
-            string[] fileInFolders = null,
+            string? friendlyName = null,
+            string? launcherName = null,
+            string[]? fileInFolders = null,
             bool isMetro = false,
-            string commandLine = null
+            string? commandLine = null
         )
         {
             if (!string.IsNullOrWhiteSpace(commandLine))
@@ -372,11 +372,11 @@ namespace NvAPIWrapper.DRS
         // ReSharper disable once TooManyArguments
         private static IDRSApplication CreateApplicationInstanceV4(
             string applicationName,
-            string friendlyName = null,
-            string launcherName = null,
-            string[] fileInFolders = null,
+            string? friendlyName = null,
+            string? launcherName = null,
+            string[]? fileInFolders = null,
             bool isMetro = false,
-            string commandLine = null
+            string? commandLine = null
         )
         {
             return new DRSApplicationV4(
@@ -418,7 +418,7 @@ namespace NvAPIWrapper.DRS
             }
 
             DRSApi.DeleteApplication(Profile.Session.Handle, Profile.Handle, _application);
-            _application = null;
+            _application = null!;
         }
     }
 }

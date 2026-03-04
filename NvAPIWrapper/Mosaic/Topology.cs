@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.Display.Structures;
@@ -81,7 +81,7 @@ namespace NvAPIWrapper.Mosaic
         public Native.Mosaic.Topology TopologyMode { get; }
 
         /// <inheritdoc />
-        public bool Equals(Topology other)
+        public bool Equals(Topology? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -213,7 +213,7 @@ namespace NvAPIWrapper.Mosaic
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

@@ -4,6 +4,8 @@ using NvAPIWrapper.Native.Display.Structures;
 using NvAPIWrapper.Native.GPU;
 using NvAPIWrapper.Native.Interfaces.Display;
 
+#nullable disable
+
 namespace NvAPIWrapper.Display
 {
     /// <summary>

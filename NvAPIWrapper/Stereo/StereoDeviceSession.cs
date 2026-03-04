@@ -98,7 +98,7 @@ namespace NvAPIWrapper.Stereo
         /// <param name="d3dDevice"></param>
         /// <returns></returns>
         // ReSharper disable once InconsistentNaming
-        public static StereoDeviceSession CreateFromIUnknownD3DDevice(IntPtr d3dDevice)
+        public static StereoDeviceSession? CreateFromIUnknownD3DDevice(IntPtr d3dDevice)
         {
             var handle = StereoApi.CreateHandleFromIUnknown(d3dDevice);
 

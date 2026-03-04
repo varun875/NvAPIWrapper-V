@@ -4,6 +4,8 @@ using System.Linq;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.DRS.Structures;
 
+#nullable disable
+
 namespace NvAPIWrapper.DRS
 {
     /// <summary>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NvAPIWrapper.Native.Display;
 using NvAPIWrapper.Native.Display.Structures;
 using NvAPIWrapper.Native.Interfaces.Display;
@@ -41,7 +41,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public bool Equals(HDRColorData other)
+        public bool Equals(HDRColorData? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -98,7 +98,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

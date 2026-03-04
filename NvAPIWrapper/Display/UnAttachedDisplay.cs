@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using NvAPIWrapper.GPU;
 using NvAPIWrapper.Native;
@@ -55,7 +55,7 @@ namespace NvAPIWrapper.Display
         /// </summary>
         /// <param name="other">The Display object to check with</param>
         /// <returns>true if both objects are equal, otherwise false</returns>
-        public bool Equals(UnAttachedDisplay other)
+        public bool Equals(UnAttachedDisplay? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -105,7 +105,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

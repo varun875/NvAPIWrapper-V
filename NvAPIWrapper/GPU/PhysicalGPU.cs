@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -394,7 +394,7 @@ namespace NvAPIWrapper.GPU
         }
 
         /// <inheritdoc />
-        public bool Equals(PhysicalGPU other)
+        public bool Equals(PhysicalGPU? other)
         {
             if (other == null)
             {
@@ -414,7 +414,7 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         /// <param name="gpuId">The GPU identification number.</param>
         /// <returns>An instance of <see cref="PhysicalGPU" /> or <see langword="null" /> if operation failed.</returns>
-        public static PhysicalGPU FromGPUId(uint gpuId)
+        public static PhysicalGPU? FromGPUId(uint gpuId)
         {
             var handle = GPUApi.GetPhysicalGPUFromGPUID(gpuId);
 
@@ -479,7 +479,7 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are equal, otherwise false</returns>
-        public static bool operator ==(PhysicalGPU left, PhysicalGPU right)
+        public static bool operator ==(PhysicalGPU? left, PhysicalGPU? right)
         {
             return Equals(left, right) || left?.Equals(right) == true;
         }
@@ -490,13 +490,13 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are not equal, otherwise false</returns>
-        public static bool operator !=(PhysicalGPU left, PhysicalGPU right)
+        public static bool operator !=(PhysicalGPU? left, PhysicalGPU? right)
         {
             return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null)
             {

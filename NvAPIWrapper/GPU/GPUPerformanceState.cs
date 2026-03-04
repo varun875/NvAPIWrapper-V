@@ -15,7 +15,7 @@ namespace NvAPIWrapper.GPU
             IPerformanceState20 performanceState,
             IPerformanceStates20ClockEntry[] statesClockEntries,
             IPerformanceStates20VoltageEntry[] baseVoltageEntries,
-            PCIeInformation pcieInformation)
+            PCIeInformation? pcieInformation)
         {
             StateIndex = index;
             StateId = performanceState.StateId;
@@ -39,7 +39,7 @@ namespace NvAPIWrapper.GPU
         /// <summary>
         ///     Gets the PCI-e information regarding this performance state.
         /// </summary>
-        public PCIeInformation PCIeInformation { get; }
+        public PCIeInformation? PCIeInformation { get; }
 
         /// <summary>
         ///     Gets the performance state identification

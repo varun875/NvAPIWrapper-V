@@ -143,12 +143,12 @@ namespace NvAPISample
                     snapshot.CurrentPerformanceState,
                     snapshot.CurrentPerformanceLimit,
                     snapshot.PerformanceDecreaseReason,
-                    GPUPowerPercent = snapshot.GPUPowerUsageInPercent?.ToString("F1") + "%" ?? "N/A",
-                    BoardPowerPercent = snapshot.BoardPowerUsageInPercent?.ToString("F1") + "%" ?? "N/A",
-                    ActivePowerTarget = snapshot.ActivePowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
-                    DefaultPowerTarget = snapshot.DefaultPowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
-                    MinPowerTarget = snapshot.MinimumPowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
-                    MaxPowerTarget = snapshot.MaximumPowerTargetInPercent?.ToString("F1") + "%" ?? "N/A",
+                    GPUPowerPercent = snapshot.GPUPowerUsageInPercent.HasValue ? $"{snapshot.GPUPowerUsageInPercent.Value:F1}%" : "N/A",
+                    BoardPowerPercent = snapshot.BoardPowerUsageInPercent.HasValue ? $"{snapshot.BoardPowerUsageInPercent.Value:F1}%" : "N/A",
+                    ActivePowerTarget = snapshot.ActivePowerTargetInPercent.HasValue ? $"{snapshot.ActivePowerTargetInPercent.Value:F1}%" : "N/A",
+                    DefaultPowerTarget = snapshot.DefaultPowerTargetInPercent.HasValue ? $"{snapshot.DefaultPowerTargetInPercent.Value:F1}%" : "N/A",
+                    MinPowerTarget = snapshot.MinimumPowerTargetInPercent.HasValue ? $"{snapshot.MinimumPowerTargetInPercent.Value:F1}%" : "N/A",
+                    MaxPowerTarget = snapshot.MaximumPowerTargetInPercent.HasValue ? $"{snapshot.MaximumPowerTargetInPercent.Value:F1}%" : "N/A",
                 });
 
                 // Watt-based readings (automatic from TDP database)
@@ -158,13 +158,13 @@ namespace NvAPISample
                     ConsoleWriter.Default.WriteObject(new
                     {
                         MatchedArchitecture = snapshot.MatchedArchitecture ?? "Unknown",
-                        DefaultTDP = snapshot.DefaultTDPInWatts?.ToString("F0") + " W" ?? "N/A",
-                        CurrentPowerLimit = snapshot.CurrentPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
-                        DefaultPowerLimit = snapshot.DefaultPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
-                        MinPowerLimit = snapshot.MinimumPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
-                        MaxPowerLimit = snapshot.MaximumPowerLimitInWatts?.ToString("F1") + " W" ?? "N/A",
-                        BoardPowerDraw = snapshot.BoardPowerDrawInWatts?.ToString("F1") + " W" ?? "N/A",
-                        GPUPowerDraw = snapshot.GPUPowerDrawInWatts?.ToString("F1") + " W" ?? "N/A",
+                        DefaultTDP = snapshot.DefaultTDPInWatts.HasValue ? $"{snapshot.DefaultTDPInWatts.Value:F0} W" : "N/A",
+                        CurrentPowerLimit = snapshot.CurrentPowerLimitInWatts.HasValue ? $"{snapshot.CurrentPowerLimitInWatts.Value:F1} W" : "N/A",
+                        DefaultPowerLimit = snapshot.DefaultPowerLimitInWatts.HasValue ? $"{snapshot.DefaultPowerLimitInWatts.Value:F1} W" : "N/A",
+                        MinPowerLimit = snapshot.MinimumPowerLimitInWatts.HasValue ? $"{snapshot.MinimumPowerLimitInWatts.Value:F1} W" : "N/A",
+                        MaxPowerLimit = snapshot.MaximumPowerLimitInWatts.HasValue ? $"{snapshot.MaximumPowerLimitInWatts.Value:F1} W" : "N/A",
+                        BoardPowerDraw = snapshot.BoardPowerDrawInWatts.HasValue ? $"{snapshot.BoardPowerDrawInWatts.Value:F1} W" : "N/A",
+                        GPUPowerDraw = snapshot.GPUPowerDrawInWatts.HasValue ? $"{snapshot.GPUPowerDrawInWatts.Value:F1} W" : "N/A",
                     });
                 }
                 else

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using NvAPIWrapper.Native.Display;
 using NvAPIWrapper.Native.Interfaces.Mosaic;
@@ -47,7 +47,7 @@ namespace NvAPIWrapper.Native.Mosaic.Structures
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

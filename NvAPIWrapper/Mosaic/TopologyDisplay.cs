@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NvAPIWrapper.GPU;
 
 namespace NvAPIWrapper.Mosaic
@@ -28,10 +28,10 @@ namespace NvAPIWrapper.Mosaic
         /// <summary>
         ///     Gets the corresponding physical GPU of this display
         /// </summary>
-        public PhysicalGPU PhysicalGPU { get; }
+        public PhysicalGPU? PhysicalGPU { get; }
 
         /// <inheritdoc />
-        public bool Equals(TopologyDisplay other)
+        public bool Equals(TopologyDisplay? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -43,7 +43,7 @@ namespace NvAPIWrapper.Mosaic
                 return true;
             }
 
-            return PhysicalGPU.Equals(other.PhysicalGPU) &&
+                 return Equals(PhysicalGPU, other.PhysicalGPU) &&
                    Output.Equals(other.Output) &&
                    Overlap.Equals(other.Overlap);
         }
@@ -54,7 +54,7 @@ namespace NvAPIWrapper.Mosaic
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are equal, otherwise false</returns>
-        public static bool operator ==(TopologyDisplay left, TopologyDisplay right)
+        public static bool operator ==(TopologyDisplay? left, TopologyDisplay? right)
         {
             return right?.Equals(left) ?? ReferenceEquals(left, null);
         }
@@ -65,13 +65,13 @@ namespace NvAPIWrapper.Mosaic
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are not equal, otherwise false</returns>
-        public static bool operator !=(TopologyDisplay left, TopologyDisplay right)
+        public static bool operator !=(TopologyDisplay? left, TopologyDisplay? right)
         {
             return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

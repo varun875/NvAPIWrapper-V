@@ -116,7 +116,7 @@ namespace NvAPIWrapper.Native.Mosaic.Structures
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

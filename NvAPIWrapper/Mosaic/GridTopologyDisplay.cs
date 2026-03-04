@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NvAPIWrapper.Display;
 using NvAPIWrapper.Native.Display;
 using NvAPIWrapper.Native.Interfaces.Mosaic;
@@ -90,7 +90,7 @@ namespace NvAPIWrapper.Mosaic
         public Rotate Rotation { get; set; }
 
         /// <inheritdoc />
-        public bool Equals(GridTopologyDisplay other)
+        public bool Equals(GridTopologyDisplay? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -132,7 +132,7 @@ namespace NvAPIWrapper.Mosaic
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

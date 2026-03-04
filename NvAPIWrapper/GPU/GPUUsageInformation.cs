@@ -1,18 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.Exceptions;
 using NvAPIWrapper.Native.General;
 using NvAPIWrapper.Native.GPU;
+using NvAPIWrapper.Native.Helpers;
 
 namespace NvAPIWrapper.GPU
 {
     /// <summary>
-    ///     Holds information about the GPU utilization domains
+    ///     Holds information about the GPU utilization domains.
+    ///     Property accesses are cached for a short window (100ms) to avoid redundant P/Invoke calls
+    ///     when multiple domain properties are read in sequence.
     /// </summary>
     public class GPUUsageInformation
     {
+        private const long CacheTTLMs = 100;
+        private GPUUsageDomainStatus[]? _cachedDomains;
+        private long _cacheTimestamp;
+
         internal GPUUsageInformation(PhysicalGPU physicalGPU)
         {
             PhysicalGPU = physicalGPU;
@@ -21,25 +29,25 @@ namespace NvAPIWrapper.GPU
         /// <summary>
         ///     Gets the Bus interface (BUS) utilization
         /// </summary>
-        public GPUUsageDomainStatus BusInterface
+        public GPUUsageDomainStatus? BusInterface
         {
-            get => UtilizationDomainsStatus.FirstOrDefault(status => status.Domain == UtilizationDomain.BusInterface);
+            get => GetCachedDomains().FirstOrDefault(status => status.Domain == UtilizationDomain.BusInterface);
         }
 
         /// <summary>
         ///     Gets the frame buffer (FB) utilization
         /// </summary>
-        public GPUUsageDomainStatus FrameBuffer
+        public GPUUsageDomainStatus? FrameBuffer
         {
-            get => UtilizationDomainsStatus.FirstOrDefault(status => status.Domain == UtilizationDomain.FrameBuffer);
+            get => GetCachedDomains().FirstOrDefault(status => status.Domain == UtilizationDomain.FrameBuffer);
         }
 
         /// <summary>
         ///     Gets the graphic engine (GPU) utilization
         /// </summary>
-        public GPUUsageDomainStatus GPU
+        public GPUUsageDomainStatus? GPU
         {
-            get => UtilizationDomainsStatus.FirstOrDefault(status => status.Domain == UtilizationDomain.GPU);
+            get => GetCachedDomains().FirstOrDefault(status => status.Domain == UtilizationDomain.GPU);
         }
 
         /// <summary>
@@ -56,39 +64,20 @@ namespace NvAPIWrapper.GPU
         public PhysicalGPU PhysicalGPU { get; }
 
         /// <summary>
-        ///     Gets all valid utilization domains and information
+        ///     Gets all valid utilization domains and information.
+        ///     Results are cached for 100ms to avoid redundant NVAPI calls.
         /// </summary>
         public IEnumerable<GPUUsageDomainStatus> UtilizationDomainsStatus
         {
-            get
-            {
-                try
-                {
-                    var dynamicPerformanceStates = GPUApi.GetDynamicPerformanceStatesInfoEx(PhysicalGPU.Handle);
-
-                    if (dynamicPerformanceStates.IsDynamicPerformanceStatesEnabled)
-                    {
-                        return dynamicPerformanceStates.Domains
-                            .Select(pair => new GPUUsageDomainStatus(pair.Key, pair.Value));
-                    }
-                }
-                catch
-                {
-                    // ignored
-                }
-
-                return GPUApi.GetUsages(PhysicalGPU.Handle).Domains
-                    .Select(pair => new GPUUsageDomainStatus(pair.Key, pair.Value));
-            }
+            get => GetCachedDomains();
         }
-
 
         /// <summary>
         ///     Gets the Video engine (VID) utilization
         /// </summary>
-        public GPUUsageDomainStatus VideoEngine
+        public GPUUsageDomainStatus? VideoEngine
         {
-            get => UtilizationDomainsStatus.FirstOrDefault(status => status.Domain == UtilizationDomain.VideoEngine);
+            get => GetCachedDomains().FirstOrDefault(status => status.Domain == UtilizationDomain.VideoEngine);
         }
 
         /// <summary>
@@ -100,7 +89,7 @@ namespace NvAPIWrapper.GPU
         {
             try
             {
-                domainsStatus = UtilizationDomainsStatus.ToArray();
+                domainsStatus = GetCachedDomains();
                 return true;
             }
             catch (NVIDIANotSupportedException)
@@ -108,7 +97,7 @@ namespace NvAPIWrapper.GPU
                 domainsStatus = Array.Empty<GPUUsageDomainStatus>();
                 return false;
             }
-            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            catch (NVIDIAApiException ex) when (NvApiStatusHelper.IsCapabilityUnavailable(ex.Status))
             {
                 domainsStatus = Array.Empty<GPUUsageDomainStatus>();
                 return false;
@@ -132,7 +121,7 @@ namespace NvAPIWrapper.GPU
                 isEnabled = false;
                 return false;
             }
-            catch (NVIDIAApiException ex) when (IsCapabilityUnavailableStatus(ex.Status))
+            catch (NVIDIAApiException ex) when (NvApiStatusHelper.IsCapabilityUnavailable(ex.Status))
             {
                 isEnabled = false;
                 return false;
@@ -147,12 +136,51 @@ namespace NvAPIWrapper.GPU
             GPUApi.EnableDynamicPStates(PhysicalGPU.Handle);
         }
 
-        private static bool IsCapabilityUnavailableStatus(Status status)
+        /// <summary>
+        ///     Invalidates the internal utilization cache, forcing the next access to query NVAPI.
+        /// </summary>
+        public void InvalidateCache()
         {
-            return status == Status.NotSupported ||
-                   status == Status.NoImplementation ||
-                   status == Status.FunctionNotFound;
+            _cachedDomains = null;
+            _cacheTimestamp = 0;
+        }
+
+        private GPUUsageDomainStatus[] GetCachedDomains()
+        {
+            var now = Stopwatch.GetTimestamp();
+            var elapsedMs = (now - _cacheTimestamp) * 1000L / Stopwatch.Frequency;
+
+            if (_cachedDomains != null && elapsedMs < CacheTTLMs)
+            {
+                return _cachedDomains;
+            }
+
+            _cachedDomains = FetchDomains();
+            _cacheTimestamp = now;
+            return _cachedDomains;
+        }
+
+        private GPUUsageDomainStatus[] FetchDomains()
+        {
+            try
+            {
+                var dynamicPerformanceStates = GPUApi.GetDynamicPerformanceStatesInfoEx(PhysicalGPU.Handle);
+
+                if (dynamicPerformanceStates.IsDynamicPerformanceStatesEnabled)
+                {
+                    return dynamicPerformanceStates.Domains
+                        .Select(pair => new GPUUsageDomainStatus(pair.Key, pair.Value))
+                        .ToArray();
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            return GPUApi.GetUsages(PhysicalGPU.Handle).Domains
+                .Select(pair => new GPUUsageDomainStatus(pair.Key, pair.Value))
+                .ToArray();
         }
     }
 }
-

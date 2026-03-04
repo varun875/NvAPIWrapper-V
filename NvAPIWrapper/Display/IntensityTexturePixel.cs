@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace NvAPIWrapper.Display
 {
@@ -36,7 +36,7 @@ namespace NvAPIWrapper.Display
         public float RedIntensity { get; }
 
         /// <inheritdoc />
-        public bool Equals(IntensityTexturePixel other)
+        public bool Equals(IntensityTexturePixel? other)
         {
             if (other == null)
             {
@@ -59,7 +59,7 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first instance.</param>
         /// <param name="right">The second instance.</param>
         /// <returns><see langword="true" /> if both instances are equal, otherwise <see langword="false" /></returns>
-        public static bool operator ==(IntensityTexturePixel left, IntensityTexturePixel right)
+        public static bool operator ==(IntensityTexturePixel? left, IntensityTexturePixel? right)
         {
             return Equals(left, right) || left?.Equals(right) == true;
         }
@@ -70,7 +70,7 @@ namespace NvAPIWrapper.Display
         /// <param name="left">The first instance.</param>
         /// <param name="right">The second instance.</param>
         /// <returns><see langword="true" /> if both instances are not equal, otherwise <see langword="false" /></returns>
-        public static bool operator !=(IntensityTexturePixel left, IntensityTexturePixel right)
+        public static bool operator !=(IntensityTexturePixel? left, IntensityTexturePixel? right)
         {
             return !(left == right);
         }
@@ -81,7 +81,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null)
             {

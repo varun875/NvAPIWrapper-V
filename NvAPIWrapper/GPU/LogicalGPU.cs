@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.GPU.Structures;
@@ -36,7 +36,7 @@ namespace NvAPIWrapper.GPU
         public LogicalGPUHandle Handle { get; }
 
         /// <inheritdoc />
-        public bool Equals(LogicalGPU other)
+        public bool Equals(LogicalGPU? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -80,7 +80,7 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are equal, otherwise false</returns>
-        public static bool operator ==(LogicalGPU left, LogicalGPU right)
+        public static bool operator ==(LogicalGPU? left, LogicalGPU? right)
         {
             return right?.Equals(left) ?? ReferenceEquals(left, null);
         }
@@ -91,13 +91,13 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are not equal, otherwise false</returns>
-        public static bool operator !=(LogicalGPU left, LogicalGPU right)
+        public static bool operator !=(LogicalGPU? left, LogicalGPU? right)
         {
             return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

@@ -6,6 +6,8 @@ using NvAPIWrapper.Native.Helpers;
 using NvAPIWrapper.Native.Helpers.Structures;
 using NvAPIWrapper.Native.Interfaces.General;
 
+#nullable disable
+
 namespace NvAPIWrapper.Native
 {
     /// <summary>

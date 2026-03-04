@@ -1,6 +1,8 @@
 ﻿using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.GPU;
 
+#nullable disable
+
 namespace NvAPIWrapper.GPU
 {
     /// <summary>

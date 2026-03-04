@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NvAPIWrapper.Native.Display;
 using NvAPIWrapper.Native.Display.Structures;
 
@@ -155,7 +155,7 @@ namespace NvAPIWrapper.Display
         public float YRatio { get; }
 
         /// <inheritdoc />
-        public bool Equals(CustomResolution other)
+        public bool Equals(CustomResolution? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -199,7 +199,7 @@ namespace NvAPIWrapper.Display
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

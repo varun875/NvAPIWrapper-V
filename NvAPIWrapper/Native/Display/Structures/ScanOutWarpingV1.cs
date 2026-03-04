@@ -56,7 +56,7 @@ namespace NvAPIWrapper.Native.Display.Structures
         /// </summary>
         public Rectangle TextureRectangle
         {
-            get => (Rectangle)Marshal.PtrToStructure(_TextureRectangle, typeof(Rectangle));
+            get => Marshal.PtrToStructure<Rectangle>(_TextureRectangle);
         }
 
         /// <summary>

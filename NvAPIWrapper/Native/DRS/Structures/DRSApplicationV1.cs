@@ -27,8 +27,8 @@ namespace NvAPIWrapper.Native.DRS.Structures
         /// <param name="launcherName">The application launcher name.</param>
         public DRSApplicationV1(
             string applicationName,
-            string friendlyName = null,
-            string launcherName = null
+            string? friendlyName = null,
+            string? launcherName = null
         )
         {
             this = typeof(DRSApplicationV1).Instantiate<DRSApplicationV1>();

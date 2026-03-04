@@ -137,7 +137,7 @@ namespace NvAPIWrapper.GPU
                 return GPUFamily.Ampere;
             if (name.StartsWith("AD"))
                 return GPUFamily.Ada;
-            if (name.StartsWith("BL"))
+            if (name.StartsWith("GB") || name.StartsWith("BL"))
                 return GPUFamily.Blackwell;
             if (name.StartsWith("GH") || name == "H100" || name == "H200")
                 return GPUFamily.Hopper;

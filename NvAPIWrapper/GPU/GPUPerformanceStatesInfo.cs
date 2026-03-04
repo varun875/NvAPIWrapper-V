@@ -27,7 +27,7 @@ namespace NvAPIWrapper.GPU
 
             PerformanceStates = states20Info.PerformanceStates.Select((state20, i) =>
             {
-                PCIeInformation statePCIeInfo = null;
+                PCIeInformation? statePCIeInfo = null;
 
                 if (pciInformation != null && pciInformation.Value.PCIePerformanceStateInfos.Length > i)
                 {
@@ -51,7 +51,7 @@ namespace NvAPIWrapper.GPU
         /// <summary>
         ///     Gets the currently active performance state
         /// </summary>
-        public GPUPerformanceState CurrentPerformanceState { get; }
+        public GPUPerformanceState? CurrentPerformanceState { get; }
 
         /// <summary>
         ///     Gets a list of global voltage settings
@@ -89,7 +89,7 @@ namespace NvAPIWrapper.GPU
                                 attributes.Add("ReadOnly");
                             }
 
-                            if (CurrentPerformanceState.StateId == state.StateId)
+                            if (CurrentPerformanceState?.StateId == state.StateId)
                             {
                                 attributes.Add("Active");
                             }

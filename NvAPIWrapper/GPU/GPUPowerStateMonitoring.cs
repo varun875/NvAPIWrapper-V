@@ -12,6 +12,12 @@ namespace NvAPIWrapper.GPU
     ///     Provides a comprehensive, unified view of GPU power, thermal, and clock status.
     ///     Call <see cref="Refresh"/> to update all values from the GPU.
     /// </summary>
+    /// <remarks>
+    ///     This class is lightweight and does not own any NVAPI handles or unmanaged resources.
+    ///     The underlying <see cref="PhysicalGPU"/> handle is owned by the NVAPI library lifetime
+    ///     (between <c>NVIDIA.Initialize()</c> and <c>NVIDIA.Unload()</c>).
+    ///     To stop monitoring, simply stop calling <see cref="Refresh"/>; no disposal is required.
+    /// </remarks>
     public class GPUPowerStateMonitoring
     {
         /// <summary>
@@ -122,9 +128,10 @@ namespace NvAPIWrapper.GPU
             public int ThrottleActivationTempC { get; set; }
 
             /// <summary>
-            ///     Thermal shutdown temperature in Celsius
+            ///     Estimated thermal shutdown temperature in Celsius.
+            ///     This is an approximation (throttle temp + 10°C) as actual shutdown temp may vary by model.
             /// </summary>
-            public int ShutdownTemperatureC { get; set; }
+            public int EstimatedShutdownTemperatureC { get; set; }
 
             /// <summary>
             ///     Is thermal throttling currently active
@@ -142,7 +149,7 @@ namespace NvAPIWrapper.GPU
             public uint ThrottleEventCount { get; set; }
 
             public override string ToString() =>
-                $"Temperature: {CurrentTemperatureC}C (throttle at {ThrottleActivationTempC}C, shutdown at {ShutdownTemperatureC}C)" +
+                $"Temperature: {CurrentTemperatureC}C (throttle at {ThrottleActivationTempC}C, est. shutdown at {EstimatedShutdownTemperatureC}C)" +
                 (IsThrottlingActive ? " [THROTTLING]" : $" [OK] ({ThermalHeadroomPercent:F1}% headroom)");
         }
 
@@ -202,6 +209,11 @@ namespace NvAPIWrapper.GPU
             PowerLimitStatus = new PowerLimitDetails();
             ThermalThrottleStatus = new ThermalThrottleDetails();
         }
+
+        /// <summary>
+        ///     Tracks the previous throttling state for event counting.
+        /// </summary>
+        private bool _wasThrottling;
 
         /// <summary>
         ///     Reference to the physical GPU
@@ -368,7 +380,7 @@ namespace NvAPIWrapper.GPU
 
                     ThermalThrottleStatus.CurrentTemperatureC = gpuSensor.CurrentTemperature;
                     ThermalThrottleStatus.ThrottleActivationTempC = gpuSensor.DefaultMaximumTemperature;
-                    ThermalThrottleStatus.ShutdownTemperatureC = gpuSensor.DefaultMaximumTemperature + 10; // Estimate
+                    ThermalThrottleStatus.EstimatedShutdownTemperatureC = gpuSensor.DefaultMaximumTemperature + 10;
 
                     if (gpuSensor.DefaultMaximumTemperature > 0)
                     {
@@ -387,6 +399,13 @@ namespace NvAPIWrapper.GPU
                 // Thermal queries may fail on some GPUs/drivers
             }
 
+            // Track throttle event transitions (false → true counts as one event)
+            if (ThermalThrottleStatus.IsThrottlingActive && !_wasThrottling)
+            {
+                ThermalThrottleStatus.ThrottleEventCount++;
+            }
+            _wasThrottling = ThermalThrottleStatus.IsThrottlingActive;
+
             return anySuccess;
         }
 
@@ -400,6 +419,16 @@ namespace NvAPIWrapper.GPU
                 PerformanceStateId.P3_Balanced => DynamicPState.P3,
                 PerformanceStateId.P4 => DynamicPState.P4,
                 PerformanceStateId.P5 => DynamicPState.P5,
+                PerformanceStateId.P6 => DynamicPState.P5,       // P6+ are deeper sleep/idle
+                PerformanceStateId.P7 => DynamicPState.P5,
+                PerformanceStateId.P8_HDVideoPlayback => DynamicPState.P3,  // HD video = balanced
+                PerformanceStateId.P9 => DynamicPState.P4,
+                PerformanceStateId.P10_DVDPlayback => DynamicPState.P3,     // DVD playback = balanced
+                PerformanceStateId.P11 => DynamicPState.P4,
+                PerformanceStateId.P12_Idle => DynamicPState.P5,            // Idle = deep idle
+                PerformanceStateId.P13 => DynamicPState.P5,
+                PerformanceStateId.P14 => DynamicPState.P5,
+                PerformanceStateId.P15 => DynamicPState.P5,                // P15 = deepest idle
                 _ => DynamicPState.Unknown
             };
         }

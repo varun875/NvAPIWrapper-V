@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using NvAPIWrapper.Display;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.Exceptions;
@@ -20,10 +20,10 @@ namespace NvAPIWrapper.GPU
             PhysicalGPU = new PhysicalGPU(gpuHandle);
         }
 
-        internal GPUOutput(OutputId outputId, PhysicalGPU gpu)
+        internal GPUOutput(OutputId outputId, PhysicalGPU? gpu)
             : this(outputId, gpu?.Handle ?? PhysicalGPUHandle.DefaultHandle)
         {
-            PhysicalGPU = gpu;
+            PhysicalGPU = gpu ?? new PhysicalGPU(PhysicalGPUHandle.DefaultHandle);
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace NvAPIWrapper.GPU
         public PhysicalGPU PhysicalGPU { get; }
 
         /// <inheritdoc />
-        public bool Equals(GPUOutput other)
+        public bool Equals(GPUOutput? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -70,7 +70,7 @@ namespace NvAPIWrapper.GPU
                 return true;
             }
 
-            return PhysicalGPU.Equals(other.PhysicalGPU) && OutputId == other.OutputId;
+            return Equals(PhysicalGPU, other.PhysicalGPU) && OutputId == other.OutputId;
         }
 
         /// <summary>
@@ -79,7 +79,7 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are equal, otherwise false</returns>
-        public static bool operator ==(GPUOutput left, GPUOutput right)
+        public static bool operator ==(GPUOutput? left, GPUOutput? right)
         {
             return right?.Equals(left) ?? ReferenceEquals(left, null);
         }
@@ -90,13 +90,13 @@ namespace NvAPIWrapper.GPU
         /// <param name="left">The first object</param>
         /// <param name="right">The second object</param>
         /// <returns>true, if both objects are not equal, otherwise false</returns>
-        public static bool operator !=(GPUOutput left, GPUOutput right)
+        public static bool operator !=(GPUOutput? left, GPUOutput? right)
         {
             return !(left == right);
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace NvAPIWrapper.GPU
 {
@@ -54,6 +55,9 @@ namespace NvAPIWrapper.GPU
             }
         }
 
+        private static readonly object _lock = new object();
+
+        // Pre-sorted by NamePattern.Length descending so "RTX 4080 SUPER" matches before "RTX 4080"
         private static readonly List<GPUPowerSpec> KnownSpecs = new List<GPUPowerSpec>
         {
             // =====================================================
@@ -107,6 +111,25 @@ namespace NvAPIWrapper.GPU
             new GPUPowerSpec("RTX 3070", 220, 260, 170, "Ampere"),
             new GPUPowerSpec("RTX 3060 Ti", 200, 240, 150, "Ampere"),
             new GPUPowerSpec("RTX 3060", 170, 200, 120, "Ampere"),
+            new GPUPowerSpec("RTX 3050", 130, 155, 90, "Ampere"),
+
+            // RTX 30 Series (Ampere) - Laptop
+            new GPUPowerSpec("RTX 3080 Ti Laptop", 150, 175, 80, "Ampere"),
+            new GPUPowerSpec("RTX 3080 Ti Mobile", 150, 175, 80, "Ampere"),
+            new GPUPowerSpec("RTX 3080 Laptop", 150, 175, 80, "Ampere"),
+            new GPUPowerSpec("RTX 3080 Mobile", 150, 175, 80, "Ampere"),
+            new GPUPowerSpec("RTX 3070 Ti Laptop", 125, 150, 60, "Ampere"),
+            new GPUPowerSpec("RTX 3070 Ti Mobile", 125, 150, 60, "Ampere"),
+            new GPUPowerSpec("RTX 3070 Laptop", 125, 145, 60, "Ampere"),
+            new GPUPowerSpec("RTX 3070 Mobile", 125, 145, 60, "Ampere"),
+            new GPUPowerSpec("RTX 3060 Laptop", 115, 130, 60, "Ampere"),
+            new GPUPowerSpec("RTX 3060 Mobile", 115, 130, 60, "Ampere"),
+            new GPUPowerSpec("RTX 3050 Ti Laptop", 80, 95, 35, "Ampere"),
+            new GPUPowerSpec("RTX 3050 Ti Mobile", 80, 95, 35, "Ampere"),
+            new GPUPowerSpec("RTX 3050 Laptop", 75, 95, 35, "Ampere"),
+            new GPUPowerSpec("RTX 3050 Mobile", 75, 95, 35, "Ampere"),
+            new GPUPowerSpec("RTX 3050 A Laptop", 60, 75, 35, "Ampere"),
+            new GPUPowerSpec("RTX 3050A Laptop", 60, 75, 35, "Ampere"),
 
             // =====================================================
             // RTX 20 Series (Turing) - Desktop
@@ -118,6 +141,20 @@ namespace NvAPIWrapper.GPU
             new GPUPowerSpec("RTX 2070", 175, 215, 140, "Turing"),
             new GPUPowerSpec("RTX 2060 SUPER", 175, 215, 140, "Turing"),
             new GPUPowerSpec("RTX 2060", 160, 190, 125, "Turing"),
+
+            // RTX 20 Series (Turing) - Laptop
+            new GPUPowerSpec("RTX 2080 SUPER Max-Q", 80, 90, 60, "Turing"),
+            new GPUPowerSpec("RTX 2080 SUPER Mobile", 150, 175, 80, "Turing"),
+            new GPUPowerSpec("RTX 2080 Max-Q", 80, 90, 60, "Turing"),
+            new GPUPowerSpec("RTX 2080 Mobile", 150, 175, 80, "Turing"),
+            new GPUPowerSpec("RTX 2070 SUPER Max-Q", 80, 90, 60, "Turing"),
+            new GPUPowerSpec("RTX 2070 SUPER Mobile", 115, 140, 65, "Turing"),
+            new GPUPowerSpec("RTX 2070 Max-Q", 80, 90, 60, "Turing"),
+            new GPUPowerSpec("RTX 2070 Mobile", 115, 140, 65, "Turing"),
+            new GPUPowerSpec("RTX 2060 Max-Q", 65, 80, 50, "Turing"),
+            new GPUPowerSpec("RTX 2060 Mobile", 80, 95, 55, "Turing"),
+            new GPUPowerSpec("RTX 2050 Laptop", 45, 55, 30, "Turing"),
+            new GPUPowerSpec("RTX 2050 Mobile", 45, 55, 30, "Turing"),
 
             // =====================================================
             // GTX 16 Series (Turing) - Desktop
@@ -197,16 +234,18 @@ namespace NvAPIWrapper.GPU
                 return false;
             }
 
-            // Sort by name pattern length descending so "RTX 4080 SUPER" matches before "RTX 4080"
-            var bestMatch = KnownSpecs
-                .Where(s => gpuFullName.IndexOf(s.NamePattern, StringComparison.OrdinalIgnoreCase) >= 0)
-                .OrderByDescending(s => s.NamePattern.Length)
-                .FirstOrDefault();
-
-            if (bestMatch != null)
+            lock (_lock)
             {
-                spec = bestMatch;
-                return true;
+                // List is pre-sorted by NamePattern.Length descending,
+                // so the first substring match is already the most specific.
+                var bestMatch = KnownSpecs
+                    .FirstOrDefault(s => gpuFullName.IndexOf(s.NamePattern, StringComparison.OrdinalIgnoreCase) >= 0);
+
+                if (bestMatch != null)
+                {
+                    spec = bestMatch;
+                    return true;
+                }
             }
 
             return false;
@@ -219,7 +258,7 @@ namespace NvAPIWrapper.GPU
         /// <returns>Default TDP in watts, or null if the GPU is not in the database.</returns>
         public static double? GetDefaultTDP(string gpuFullName)
         {
-            return TryGetSpec(gpuFullName, out var spec) ? spec?.DefaultTDPWatts : null;
+            return TryGetSpec(gpuFullName, out var spec) && spec != null ? spec.DefaultTDPWatts : (double?)null;
         }
 
         /// <summary>
@@ -248,8 +287,14 @@ namespace NvAPIWrapper.GPU
                 throw new ArgumentOutOfRangeException(nameof(defaultTdpWatts));
             }
 
-            // Insert at the beginning so user-registered specs take priority
-            KnownSpecs.Insert(0, new GPUPowerSpec(namePattern, defaultTdpWatts, maxTdpWatts, minTdpWatts, architecture));
+            lock (_lock)
+            {
+                // Insert at the beginning so user-registered specs take priority
+                KnownSpecs.Insert(0, new GPUPowerSpec(namePattern, defaultTdpWatts, maxTdpWatts, minTdpWatts, architecture));
+
+                // Re-sort by pattern length descending to maintain match-specificity ordering
+                KnownSpecs.Sort((a, b) => b.NamePattern.Length.CompareTo(a.NamePattern.Length));
+            }
         }
     }
 }

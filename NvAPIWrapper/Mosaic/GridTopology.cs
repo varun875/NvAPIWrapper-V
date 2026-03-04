@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using NvAPIWrapper.Native;
 using NvAPIWrapper.Native.Display.Structures;
@@ -80,7 +80,7 @@ namespace NvAPIWrapper.Mosaic
         /// <summary>
         ///     Gets topology displays
         /// </summary>
-        public GridTopologyDisplay[] Displays { get; private set; }
+        public GridTopologyDisplay[] Displays { get; private set; } = Array.Empty<GridTopologyDisplay>();
 
         /// <summary>
         ///     Gets or sets a boolean value allowing the API to, if necessary, realod the driver (for Vista and above only). Will
@@ -109,7 +109,7 @@ namespace NvAPIWrapper.Mosaic
         public int Rows { get; private set; }
 
         /// <inheritdoc />
-        public bool Equals(GridTopology other)
+        public bool Equals(GridTopology? other)
         {
             if (ReferenceEquals(null, other))
             {
@@ -228,7 +228,7 @@ namespace NvAPIWrapper.Mosaic
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(null, obj))
             {

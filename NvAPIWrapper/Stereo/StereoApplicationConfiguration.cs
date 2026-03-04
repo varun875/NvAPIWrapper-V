@@ -26,7 +26,7 @@ namespace NvAPIWrapper.Stereo
         /// <summary>
         ///     Gets the currently default profile name.
         /// </summary>
-        public static string DefaultProfile
+        public static string? DefaultProfile
         {
             get => StereoApi.GetDefaultProfile();
         }

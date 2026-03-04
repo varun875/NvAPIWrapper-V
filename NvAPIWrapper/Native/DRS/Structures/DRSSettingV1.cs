@@ -6,6 +6,8 @@ using NvAPIWrapper.Native.General.Structures;
 using NvAPIWrapper.Native.Helpers;
 using NvAPIWrapper.Native.Interfaces;
 
+#nullable disable
+
 namespace NvAPIWrapper.Native.DRS.Structures
 {
     /// <summary>
