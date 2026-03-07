@@ -18,12 +18,15 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>nvidia;tesla;fermi;kepler;maxwell;pascal;turing;ampere;ada;blackwell;gpu;nvapi;monitoring;overclocking;cooling;power;watts;rtx40;rtx50</PackageTags>
     <PackageReleaseNotes>
-🚀 Version 9.0.1 Major Update:
-- Added full support for RTX 40 (Ada Lovelace) and RTX 50 (Blackwell) series.
-- New Real-time Power Telemetry: Get Board &amp; GPU power usage in Watts automatically.
-- Built-in TDP Database: Automatic power limit resolution for 60+ GPU models.
-- Modernized Enums: Added GDDR6/6X/7, HBM3, AIO Coolers, and new Foundry types.
-- Improved Throttle Detection: Precise flags for Power, Thermal, Voltage, and No-Load limits.
+  Version 9.0.2
+
+  - Kept all projects on net6.0 for compatibility and stable distribution.
+  - Resolved critical nullable-contract warning families across wrapper APIs (CS8765/CS8767/CS8625/CS86xx hotspots).
+  - Hardened equality/operator null handling in key Display/GPU/Mosaic/Stereo model types.
+  - Improved telemetry and fallback behavior in GPU power/thermal/usage flows.
+  - Expanded and stabilized GPU power spec matching logic and thread-safety.
+  - Added shared NVAPI capability-unavailable status helper for safer fallback paths.
+  - Release build validated successfully.
     </PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <IncludeSource>true</IncludeSource>
