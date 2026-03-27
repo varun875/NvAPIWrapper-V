@@ -4,8 +4,8 @@ Fork of [falahati/NvAPIWrapper](https://github.com/falahati/NvAPIWrapper) with s
 
 - Repository: `https://github.com/varun875/NvAPIWrapper-V`
 - Package ID: `Varun.NvAPIWrapper.Net`
-- Current package version in this repo: `9.0.1`
-- Library targets: `netstandard2.1`, `net461`
+- Current package version in this repo: `9.0.2`
+- Library target framework: `net6.0`
 - Library language version: C# `9.0`
 
 ## What Changed In This Fork

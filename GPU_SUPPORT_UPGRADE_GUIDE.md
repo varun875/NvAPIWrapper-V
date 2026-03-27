@@ -334,15 +334,15 @@ None if done carefully. These are additive enumerations.
 
 | Version | NVAPI | Year | Latest GPU |
 |---------|-------|------|-----------|
-| 0.8.1 (current) | R410 | 2018 | RTX 20 series |
-| Target | R545+ | 2024 | RTX 50 series |
+| 9.0.2 (current) | R410+ | 2026 | RTX 40/50 series |
+| Next target | R545+ | 2026+ | RTX 50 series and beyond |
 
-**Recommended new version: 0.9.0** (minor version bump for new enums)
+**Current release version: 9.0.2** (this guide remains as a modernization reference)
 
 ---
 
 ## Dependencies to Update
 
 - Visual Studio: Minimum 2019 (current uses 2017)
-- .NET targets: Keep netstandard2.0 & net45 for compatibility
+- .NET target: net6.0 (current maintained target)
 - NVAPI SDK: Download latest from NVIDIA developer portal

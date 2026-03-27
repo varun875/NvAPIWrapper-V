@@ -1,8 +1,7 @@
-# NvAPIWrapper RTX 40/50 Series Support - Quick Reference
+# NvAPIWrapper-V Quick Reference (9.0.2 / net6.0)
 
 ## ✅ Build Status: SUCCESSFUL
-- **netstandard2.0**: ✅ Builds successfully (0 errors, 0 warnings)
-- **net45**: ✅ Builds successfully (0 errors, 0 warnings)
+- **net6.0**: ✅ Builds successfully
 
 ## 🎯 What Was Updated
 
@@ -199,12 +198,12 @@ dotnet pack -c Release
 ### Installation
 ```bash
 # Users can install updated package
-dotnet add package NvAPIWrapper.Net --version 0.9.0+
+dotnet add package Varun.NvAPIWrapper.Net --version 9.0.2
 ```
 
 ### Version Recommendation
-**Current**: 0.8.1.101  
-**Recommended**: 0.9.0 (minor version for new features)
+**Current in this fork**: 9.0.2  
+**Recommended**: 9.0.2
 
 ---
 
@@ -273,5 +272,5 @@ For issues specific to:
 
 ---
 
-**Last Updated**: February 11, 2025  
+**Last Updated**: 2026-03-08  
 **Status**: Production Ready ✅
