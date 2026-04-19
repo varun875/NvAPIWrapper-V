@@ -1,5 +1,8 @@
 ## <img src="NvAPIWrapper/Icon.png" width="24" alt="NvAPIWrapper"> NvAPIWrapper-V (Modernized NVIDIA NVAPI Wrapper)
 
+[![NuGet](https://img.shields.io/nuget/v/Varun.NvAPIWrapper.Net?logo=nuget&label=NuGet)](https://www.nuget.org/packages/Varun.NvAPIWrapper.Net/)
+[![Downloads](https://img.shields.io/nuget/dt/Varun.NvAPIWrapper.Net?logo=nuget&label=Downloads)](https://www.nuget.org/packages/Varun.NvAPIWrapper.Net/)
+
 Fork of [falahati/NvAPIWrapper](https://github.com/falahati/NvAPIWrapper) with safe modernization work focused on newer NVIDIA drivers/GPUs and better fallback behavior on older systems.
 
 - Repository: `https://github.com/varun875/NvAPIWrapper-V`
