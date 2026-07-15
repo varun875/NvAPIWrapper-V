@@ -23,8 +23,11 @@ jobs:
       - name: Restore
         run: dotnet restore NvAPIWrapper/NvAPIWrapper.csproj
 
+      - name: Build
+        run: dotnet build NvAPIWrapper/NvAPIWrapper.csproj -c Release --no-restore
+
       - name: Pack
-        run: dotnet pack NvAPIWrapper/NvAPIWrapper.csproj -c Release -o Release --no-restore
+        run: dotnet pack NvAPIWrapper/NvAPIWrapper.csproj -c Release -o Release --no-restore --no-build
 
       - name: Publish to NuGet (Trusted Publishing)
         run: dotnet nuget push "Release\Varun.NvAPIWrapper.Net.*.nupkg" --source https://api.nuget.org/v3/index.json --skip-duplicate
