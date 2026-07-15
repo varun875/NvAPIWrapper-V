@@ -40,7 +40,7 @@ jobs:
           $response = Invoke-RestMethod `
             -Uri "https://api.nuget.org/v1/authentication/authenticate" `
             -Method POST `
-            -Body (@{ oidcToken = $oidcToken } | ConvertTo-Json) `
+            -Headers @{ Authorization = "Bearer $oidcToken" } `
             -ContentType "application/json"
           Write-Output "::add-mask::$($response.tokenValue)"
           "NUGET_API_KEY=$($response.tokenValue)" | Out-File -FilePath $env:GITHUB_ENV -Append
