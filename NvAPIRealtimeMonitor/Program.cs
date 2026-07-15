@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -58,6 +59,10 @@ namespace NvAPIRealtimeMonitor
         private static long _sampleCount;
         private static double _totalPowerW;
         private static double _totalTempC;
+
+        // ── Cached Static Info (queried once) ───────────────────
+        private static bool _hasNVLinkCached;
+        private static string _nvlinkInfoCached = "";
 
         private static int Main()
         {
@@ -159,6 +164,27 @@ namespace NvAPIRealtimeMonitor
             {
                 tdpInfo = "Unknown (not in database)";
             }
+
+            // Cache NVLink info once (capabilities don't change during monitoring)
+            try
+            {
+                if (gpu.IsNVLinkSupported)
+                {
+                    _hasNVLinkCached = true;
+                    var caps = gpu.NVLinkCapabilities;
+                    if (caps.HasValue)
+                    {
+                        var c = caps.Value;
+                        var flags = c.CapabilityFlags;
+                        var linkCount = BitOperations.PopCount(c.LinkMask);
+                        _nvlinkInfoCached = $"NVLink v{c.HighestNVLinkVersion} ({linkCount} links)";
+                        _nvlinkInfoCached += $"  P2P:{(flags.HasFlag(NVLinkCapabilityFlags.P2PSupported)?"✓":"✗")}";
+                        _nvlinkInfoCached += $"  Sysmem:{(flags.HasFlag(NVLinkCapabilityFlags.SysmemAccess)?"✓":"✗")}";
+                        _nvlinkInfoCached += $"  SLI:{(flags.HasFlag(NVLinkCapabilityFlags.SliBridge)?"✓":"✗")}";
+                    }
+                }
+            }
+            catch { }
 
             // Hide cursor & prepare
             Console.CursorVisible = false;
@@ -278,6 +304,24 @@ namespace NvAPIRealtimeMonitor
                 }
                 catch { }
 
+                // Individual fan details (per-fan RPM)
+                string fanDetailsText = "";
+                try
+                {
+                    var coolers = gpu.CoolerInformation.Coolers.ToArray();
+                    if (coolers.Length > 0)
+                    {
+                        var parts = coolers.Select(c =>
+                            $"Fan #{c.CoolerId}: {c.CurrentFanSpeedInRPM}RPM ({c.CurrentLevel}%)");
+                        fanDetailsText = string.Join("  ", parts);
+                    }
+                }
+                catch { }
+
+                // NVLink info (from cache)
+                bool hasNVLink = _hasNVLinkCached;
+                string nvlinkInfoText = _nvlinkInfoCached;
+
                 // VRAM usage
                 try
                 {
@@ -375,6 +419,11 @@ namespace NvAPIRealtimeMonitor
                 var tempColor = gpuTempC > 85 ? Red : gpuTempC > 70 ? Yellow : Green;
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU Temp:{Reset}     {tempColor}{Bold}{gpuTempC,5:F0}°C{Reset}    {RenderBar(tempPct, BarWidth, tempColor)}  {DarkGray}Peak:{Reset} {Red}{_peakTempC:F0}°C{Reset}")}{Bold}{Cyan}║{Reset}");
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Avg Temp:{Reset}     {Blue}{avgTempC,5:F1}°C{Reset}    {DarkGray}Fan:{Reset} {Cyan}{fanSpeedPct:F0}%{Reset}  {RenderBar(fanSpeedPct, 15, Cyan)}")}{Bold}{Cyan}║{Reset}");
+                // Per-fan details (when multiple coolers)
+                if (!string.IsNullOrEmpty(fanDetailsText))
+                {
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Fans:{Reset} {Cyan}{Truncate(fanDetailsText, innerWidth - 7)}{Reset}")}{Bold}{Cyan}║{Reset}");
+                }
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Sparkline (30s):{Reset} {RenderSparkline(TempHistory, Red)}")}{Bold}{Cyan}║{Reset}");
                 sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
@@ -400,6 +449,15 @@ namespace NvAPIRealtimeMonitor
                     isThermalThrottled ? "🌡️" : "⚠️";
 
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{throttleIcon} {DarkGray}Throttle:{Reset} {throttleColor}{Bold}{Truncate(throttleStatus, 60)}{Reset}")}{Bold}{Cyan}║{Reset}");
+
+                // ── NVLink Section (when available) ─────────────
+                if (hasNVLink && !string.IsNullOrEmpty(nvlinkInfoText))
+                {
+                    sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{Magenta}🔗 NVLINK{Reset}")}{Bold}{Cyan}║{Reset}");
+                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}{nvlinkInfoText}{Reset}")}{Bold}{Cyan}║{Reset}");
+                }
+
                 sb.AppendLine($"{Bold}{Cyan}╚{border}╝{Reset}");
                 sb.AppendLine();
                 sb.AppendLine($"  {DarkGray}[Q] Quit  [R] Reset Stats{Reset}");
