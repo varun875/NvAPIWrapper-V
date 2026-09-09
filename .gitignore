@@ -181,6 +181,7 @@ BundleArtifacts/
 
 # Others
 ClientBin/
+.commandcode/
 [Ss]tyle[Cc]op.*
 ~$*
 *~
@@ -245,3 +246,6 @@ ModelManifest.xml
 .fake/
 R375-developer/*
 R410-developer/*
+
+# Photoshop sources (only exported PNGs are packaged)
+*.psd

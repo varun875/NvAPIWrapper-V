@@ -8,6 +8,9 @@ using NvAPIWrapper.Native.Interfaces;
 
 namespace NvAPIWrapper.Native.GPU.Structures
 {
+    /// <summary>
+    ///     [PRIVATE] Client fan cooler control settings (v1).
+    /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 8)]
     [StructureVersion(1)]
     public struct PrivateFanCoolersControlV1 : IInitializable
@@ -23,16 +26,27 @@ namespace NvAPIWrapper.Native.GPU.Structures
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MaxNumberOfFanCoolerControlEntries)]
         internal readonly FanCoolersControlEntry[] _FanCoolersControlEntries;
 
+        /// <summary>
+        ///     Gets the configured fan cooler control entries.
+        /// </summary>
         public FanCoolersControlEntry[] FanCoolersControlEntries
         {
             get => _FanCoolersControlEntries.Take((int) _FanCoolersControlCount).ToArray();
         }
 
+        /// <summary>
+        ///     Gets the driver-reserved control value.
+        /// </summary>
         public uint UnknownUInt
         {
             get => _UnknownUInt;
         }
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="PrivateFanCoolersControlV1" /> structure.
+        /// </summary>
+        /// <param name="entries">The fan cooler control entries to apply.</param>
+        /// <param name="unknownUInt">The driver-reserved control value.</param>
         public PrivateFanCoolersControlV1(FanCoolersControlEntry[] entries, uint unknownUInt = 0)
         {
             if (entries?.Length > MaxNumberOfFanCoolerControlEntries)
@@ -56,6 +70,9 @@ namespace NvAPIWrapper.Native.GPU.Structures
         }
 
 
+        /// <summary>
+        ///     A single fan cooler control entry.
+        /// </summary>
         [StructLayout(LayoutKind.Sequential, Pack = 8)]
         public struct FanCoolersControlEntry
         {
@@ -66,6 +83,12 @@ namespace NvAPIWrapper.Native.GPU.Structures
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8, ArraySubType = UnmanagedType.U4)]
             internal readonly uint[] _Reserved;
 
+            /// <summary>
+            ///     Initializes a new instance of the <see cref="FanCoolersControlEntry" /> structure.
+            /// </summary>
+            /// <param name="coolerId">The cooler identifier.</param>
+            /// <param name="controlMode">The control mode to apply.</param>
+            /// <param name="level">The manual control level.</param>
             public FanCoolersControlEntry(uint coolerId, FanCoolersControlMode controlMode, uint level)
             {
                 this = typeof(FanCoolersControlEntry).Instantiate<FanCoolersControlEntry>();
@@ -74,6 +97,11 @@ namespace NvAPIWrapper.Native.GPU.Structures
                 _Level = level;
             }
 
+            /// <summary>
+            ///     Initializes a new instance of the <see cref="FanCoolersControlEntry" /> structure.
+            /// </summary>
+            /// <param name="coolerId">The cooler identifier.</param>
+            /// <param name="controlMode">The control mode to apply.</param>
             public FanCoolersControlEntry(uint coolerId, FanCoolersControlMode controlMode) : this(coolerId,
                 controlMode, 0)
             {
@@ -86,16 +114,25 @@ namespace NvAPIWrapper.Native.GPU.Structures
                 }
             }
 
+            /// <summary>
+            ///     Gets the cooler identifier.
+            /// </summary>
             public uint CoolerId
             {
                 get => _CoolerId;
             }
 
+            /// <summary>
+            ///     Gets the manual control level.
+            /// </summary>
             public uint Level
             {
                 get => _Level;
             }
 
+            /// <summary>
+            ///     Gets the control mode.
+            /// </summary>
             public FanCoolersControlMode ControlMode
             {
                 get => _ControlMode;

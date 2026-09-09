@@ -369,6 +369,12 @@ namespace NvAPIWrapper.Native
             }
         }
 
+        /// <summary>
+        ///     [PRIVATE]
+        ///     Gets the client fan cooler capability information for the passed GPU handle.
+        /// </summary>
+        /// <param name="gpuHandle">The handle of the GPU to perform the operation on.</param>
+        /// <returns>The client fan cooler capability information.</returns>
         public static PrivateFanCoolersInfoV1 GetClientFanCoolersInfo(PhysicalGPUHandle gpuHandle)
         {
             var instance = typeof(PrivateFanCoolersInfoV1).Instantiate<PrivateFanCoolersInfoV1>();
@@ -389,6 +395,12 @@ namespace NvAPIWrapper.Native
             }
         }
 
+        /// <summary>
+        ///     [PRIVATE]
+        ///     Gets the client fan cooler live status for the passed GPU handle.
+        /// </summary>
+        /// <param name="gpuHandle">The handle of the GPU to perform the operation on.</param>
+        /// <returns>The client fan cooler live status.</returns>
         public static PrivateFanCoolersStatusV1 GetClientFanCoolersStatus(PhysicalGPUHandle gpuHandle)
         {
             var instance = typeof(PrivateFanCoolersStatusV1).Instantiate<PrivateFanCoolersStatusV1>();
@@ -410,6 +422,12 @@ namespace NvAPIWrapper.Native
             }
         }
 
+        /// <summary>
+        ///     [PRIVATE]
+        ///     Gets the client fan cooler control settings for the passed GPU handle.
+        /// </summary>
+        /// <param name="gpuHandle">The handle of the GPU to perform the operation on.</param>
+        /// <returns>The client fan cooler control settings.</returns>
         public static PrivateFanCoolersControlV1 GetClientFanCoolersControl(PhysicalGPUHandle gpuHandle)
         {
             var instance = typeof(PrivateFanCoolersControlV1).Instantiate<PrivateFanCoolersControlV1>();
@@ -430,6 +448,12 @@ namespace NvAPIWrapper.Native
             }
         }
 
+        /// <summary>
+        ///     [PRIVATE]
+        ///     Applies the client fan cooler control settings for the passed GPU handle.
+        /// </summary>
+        /// <param name="gpuHandle">The handle of the GPU to perform the operation on.</param>
+        /// <param name="control">The fan cooler control settings to apply.</param>
         public static void SetClientFanCoolersControl(PhysicalGPUHandle gpuHandle, PrivateFanCoolersControlV1 control)
         {
             using (var coolerLevelsReference = ValueTypeReference.FromValueType(control))

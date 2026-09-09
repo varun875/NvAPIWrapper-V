@@ -37,7 +37,7 @@ namespace NvAPIWrapper.Tests
         [Fact]
         public void DetectFamily_ReturnsUnknownForNull()
         {
-            Assert.Equal(GPUFamilyClassifier.GPUFamily.Unknown, GPUFamilyClassifier.DetectFamily(null));
+            Assert.Equal(GPUFamilyClassifier.GPUFamily.Unknown, GPUFamilyClassifier.DetectFamily(null!));
         }
 
         [Fact]

@@ -36,16 +36,25 @@ namespace NvAPIWrapper.Native.Display.Structures
             get => _data[0].GetBit(0);
         }
 
+        /// <summary>
+        ///     Gets the scan information for Consumer Electronics video formats.
+        /// </summary>
         public byte ScanInfoConsumerElectronicsVideoFormats
         {
             get => (byte)_data[0].GetBits(6, 2);
         }
 
+        /// <summary>
+        ///     Gets the scan information for Information Technology video formats.
+        /// </summary>
         public byte ScanInfoInformationTechnologyVideoFormats
         {
             get => (byte)_data[0].GetBits(4, 2);
         }
 
+        /// <summary>
+        ///     Gets the scan information for the preferred video format.
+        /// </summary>
         public byte ScanInfoPreferredVideoFormat
         {
             get => (byte)_data[0].GetBits(2, 2);

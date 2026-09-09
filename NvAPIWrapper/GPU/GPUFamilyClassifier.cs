@@ -115,7 +115,7 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         /// <param name="shortName">GPU codename from architecture info</param>
         /// <returns>Detected GPU family</returns>
-        public static GPUFamily DetectFamily(string shortName)
+        public static GPUFamily DetectFamily(string? shortName)
         {
             if (string.IsNullOrWhiteSpace(shortName))
                 return GPUFamily.Unknown;

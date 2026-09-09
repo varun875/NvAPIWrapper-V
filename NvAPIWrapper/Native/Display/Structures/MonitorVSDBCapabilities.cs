@@ -37,6 +37,9 @@ namespace NvAPIWrapper.Native.Display.Structures
             }
         }
 
+        /// <summary>
+        ///     Gets the HDMI 3D capability data.
+        /// </summary>
         public byte[] HDMI3D
         {
             get
@@ -50,6 +53,9 @@ namespace NvAPIWrapper.Native.Display.Structures
             }
         }
 
+        /// <summary>
+        ///     Gets the HDMI video image compositor data.
+        /// </summary>
         public byte[] HDMIVideoImageCompositors
         {
             get
@@ -95,6 +101,9 @@ namespace NvAPIWrapper.Native.Display.Structures
             }
         }
 
+        /// <summary>
+        ///     Gets a boolean value indicating if Audio InfoFrame (AI) packets are supported.
+        /// </summary>
         public bool IsAISupported
         {
             get => _data[2].GetBit(7);

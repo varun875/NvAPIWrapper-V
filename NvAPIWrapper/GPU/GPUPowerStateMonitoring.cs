@@ -55,6 +55,10 @@ namespace NvAPIWrapper.GPU
             /// </summary>
             public bool IsThrottledByPower { get; set; }
 
+            /// <summary>
+            ///     Returns a human-readable summary of the boost clock state.
+            /// </summary>
+            /// <returns>A formatted string describing current, maximum, and offset clocks plus throttle flags.</returns>
             public override string ToString() =>
                 $"Boost Clock: {CurrentBoostClockMHz}MHz (max: {MaxBoostClockMHz}MHz, offset: {BoostOffsetMHz:+0;-#}MHz)" +
                 (IsThrottledByTemperature ? " [TEMP_THROTTLED]" : string.Empty) +
@@ -99,6 +103,10 @@ namespace NvAPIWrapper.GPU
             /// </summary>
             public bool IsTDPKnown { get; set; }
 
+            /// <summary>
+            ///     Returns a human-readable summary of the power limit state.
+            /// </summary>
+            /// <returns>A formatted string with current power, active limit, and utilization.</returns>
             public override string ToString()
             {
                 if (!IsTDPKnown)
@@ -148,6 +156,10 @@ namespace NvAPIWrapper.GPU
             /// </summary>
             public uint ThrottleEventCount { get; set; }
 
+            /// <summary>
+            ///     Returns a human-readable summary of the thermal throttle state.
+            /// </summary>
+            /// <returns>A formatted string with current temperature, throttle point, and headroom.</returns>
             public override string ToString() =>
                 $"Temperature: {CurrentTemperatureC}C (throttle at {ThrottleActivationTempC}C, est. shutdown at {EstimatedShutdownTemperatureC}C)" +
                 (IsThrottlingActive ? " [THROTTLING]" : $" [OK] ({ThermalHeadroomPercent:F1}% headroom)");

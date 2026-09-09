@@ -211,6 +211,10 @@ namespace NvAPIWrapper.GPU
                 }
             }
 
+            /// <summary>
+            ///     Returns a human-readable summary of the thermal sensor reading.
+            /// </summary>
+            /// <returns>A formatted string with sensor id, type, zone, temperature, and status.</returns>
             public override string ToString() =>
                 $"Sensor {SensorId} ({Type}, {Zone}): {CurrentTemperatureC}C " +
                 $"(throttle: {ThrottleTemperatureC}C, shutdown: {ShutdownTemperatureC}C)" +
@@ -252,6 +256,10 @@ namespace NvAPIWrapper.GPU
             /// </summary>
             public double AverageTemperatureC { get; set; }
 
+            /// <summary>
+            ///     Returns a human-readable summary of the thermal zone status.
+            /// </summary>
+            /// <returns>A formatted string with zone, peak and average temperatures.</returns>
             public override string ToString() =>
                 $"{Zone}: {PeakTemperatureC}C avg: {AverageTemperatureC:F1}C" +
                 (IsAnyThrottling ? " [THROTTLING]" : string.Empty);
