@@ -334,10 +334,10 @@ None if done carefully. These are additive enumerations.
 
 | Version | NVAPI | Year | Latest GPU |
 |---------|-------|------|-----------|
-| 9.0.2 (current) | R410+ | 2026 | RTX 40/50 series |
+| 9.0.3 (current) | R410+ | 2026 | RTX 40/50 series |
 | Next target | R545+ | 2026+ | RTX 50 series and beyond |
 
-**Current release version: 9.0.2** (this guide remains as a modernization reference)
+**Current release version: 9.0.3** (this guide remains as a modernization reference)
 
 ---
 

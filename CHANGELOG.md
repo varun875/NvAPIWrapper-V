@@ -2,6 +2,21 @@
 
 All notable changes to this fork are documented in this file.
 
+## [9.0.3] - 2026-09-09
+
+### Added
+- New unit test project (`NvAPIWrapper.Tests`) with 60+ tests covering
+  `GPUPowerSpecDatabase`, `GPUFamilyClassifier`, and enum value coverage.
+
+### Notes
+- No breaking changes to the library API surface.
+- Release build validated successfully.
+
+### Packaging
+- Package ID: `Varun.NvAPIWrapper.Net`
+- Current package version: `9.0.3`
+- Current library target framework: `net6.0`
+
 ## [9.0.2] - 2026-03-08
 
 ### Changed

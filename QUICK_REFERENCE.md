@@ -1,4 +1,4 @@
-# NvAPIWrapper-V Quick Reference (9.0.2 / net6.0)
+# NvAPIWrapper-V Quick Reference (9.0.3 / net6.0)
 
 ## ✅ Build Status: SUCCESSFUL
 - **net6.0**: ✅ Builds successfully
@@ -198,12 +198,12 @@ dotnet pack -c Release
 ### Installation
 ```bash
 # Users can install updated package
-dotnet add package Varun.NvAPIWrapper.Net --version 9.0.2
+dotnet add package Varun.NvAPIWrapper.Net --version 9.0.3
 ```
 
 ### Version Recommendation
-**Current in this fork**: 9.0.2  
-**Recommended**: 9.0.2
+**Current in this fork**: 9.0.3  
+**Recommended**: 9.0.3
 
 ---
 

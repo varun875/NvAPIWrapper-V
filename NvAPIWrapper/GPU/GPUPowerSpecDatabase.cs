@@ -57,7 +57,18 @@ namespace NvAPIWrapper.GPU
 
         private static readonly object _lock = new object();
 
-        // Pre-sorted by NamePattern.Length descending so "RTX 4080 SUPER" matches before "RTX 4080"
+        static GPUPowerSpecDatabase()
+        {
+            // The list below is grouped by GPU series for readability, so enforce
+            // longest-pattern-first ordering here. TryGetSpec returns the first
+            // substring match, which must be the most specific pattern
+            // (e.g. "RTX 4090 Laptop" must win over "RTX 4090").
+            KnownSpecs.Sort((a, b) => b.NamePattern.Length.CompareTo(a.NamePattern.Length));
+        }
+
+        // Grouped by GPU series for readability; sorted by pattern length
+        // descending in the static constructor so longer (more specific)
+        // patterns match first (e.g. "RTX 4080 SUPER" before "RTX 4080")
         private static readonly List<GPUPowerSpec> KnownSpecs = new List<GPUPowerSpec>
         {
             // =====================================================
@@ -181,6 +192,7 @@ namespace NvAPIWrapper.GPU
             new GPUPowerSpec("L40S", 350, 400, 250, "Ada Lovelace"),
             new GPUPowerSpec("L40", 300, 350, 200, "Ada Lovelace"),
             new GPUPowerSpec("L4", 72, 85, 50, "Ada Lovelace"),
+            new GPUPowerSpec("H100", 700, 800, 500, "Hopper"),
             new GPUPowerSpec("H100 SXM", 700, 800, 500, "Hopper"),
             new GPUPowerSpec("H100 PCIe", 350, 400, 250, "Hopper"),
             new GPUPowerSpec("H100 NVL", 400, 460, 300, "Hopper"),
@@ -225,7 +237,7 @@ namespace NvAPIWrapper.GPU
         /// <param name="gpuFullName">The GPU full name from NVAPI (e.g. "NVIDIA GeForce RTX 4090").</param>
         /// <param name="spec">The matched power specification, or null.</param>
         /// <returns>True when a match is found.</returns>
-        public static bool TryGetSpec(string gpuFullName, out GPUPowerSpec? spec)
+        public static bool TryGetSpec(string? gpuFullName, out GPUPowerSpec? spec)
         {
             spec = null;
 
@@ -256,7 +268,7 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         /// <param name="gpuFullName">The GPU full name from NVAPI.</param>
         /// <returns>Default TDP in watts, or null if the GPU is not in the database.</returns>
-        public static double? GetDefaultTDP(string gpuFullName)
+        public static double? GetDefaultTDP(string? gpuFullName)
         {
             return TryGetSpec(gpuFullName, out var spec) && spec != null ? spec.DefaultTDPWatts : (double?)null;
         }
