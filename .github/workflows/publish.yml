@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -28,4 +29,12 @@ jobs:
         run: dotnet pack NvAPIWrapper/NvAPIWrapper.csproj -c Release -o ./nupkg --no-restore --no-build
 
       - name: Publish to NuGet
-        run: dotnet nuget push "nupkg\Varun.NvAPIWrapper.Net.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) {
+            Write-Error "NUGET_API_KEY secret is missing or empty. Add it under repo Settings > Secrets and variables > Actions."
+            exit 1
+          }
+          dotnet nuget push "nupkg/Varun.NvAPIWrapper.Net.*.nupkg" --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+        shell: pwsh
