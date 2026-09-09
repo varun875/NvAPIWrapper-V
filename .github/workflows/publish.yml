@@ -36,5 +36,14 @@ jobs:
             Write-Error "NUGET_API_KEY secret is missing or empty. Add it under repo Settings > Secrets and variables > Actions."
             exit 1
           }
-          dotnet nuget push "nupkg/Varun.NvAPIWrapper.Net.*.nupkg" --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+          $pkgs = Get-ChildItem -Path ./nupkg -Filter 'Varun.NvAPIWrapper.Net.*.nupkg' -ErrorAction SilentlyContinue
+          if (-not $pkgs) {
+            Write-Host "Nothing in ./nupkg, checking ./Release (GeneratePackageOnBuild output)..."
+            $pkgs = Get-ChildItem -Path ./Release -Filter 'Varun.NvAPIWrapper.Net.*.nupkg' -ErrorAction SilentlyContinue
+          }
+          if (-not $pkgs) { Write-Error "No nupkg found in ./nupkg or ./Release."; exit 1 }
+          foreach ($p in $pkgs) {
+            Write-Host "Pushing $($p.FullName)..."
+            dotnet nuget push $p.FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+          }
         shell: pwsh
