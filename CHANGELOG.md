@@ -2,6 +2,32 @@
 
 All notable changes to this fork are documented in this file.
 
+## [9.0.4] - 2026-09-09
+
+### Fixed
+- `GPUPowerSpecDatabase` longest-pattern-first matching: laptop GPU names
+  (e.g. "RTX 4090 Laptop GPU") previously matched the desktop entry.
+- Added a bare `H100` fallback entry (700W Hopper) alongside the SXM/PCIe/NVL variants.
+- Silenced all 41 CS1591 missing-XML-doc warnings across fan cooler V1 structs,
+  thermal cooler APIs, monitor capability properties, and `ToString()` overrides.
+
+### Changed
+- Test project (`NvAPIWrapper.Tests`) retargeted from `net6.0` to `net8.0`;
+  151 tests passing with zero build warnings.
+- Nullable annotations on `GPUPowerSpecDatabase.TryGetSpec`/`GetDefaultTDP` and
+  `GPUFamilyClassifier.DetectFamily`.
+- Consolidated six overlapping 9.0.2 summary docs into `RELEASE_NOTES_9.0.x.md`.
+- Removed `Icon.psd` (Photoshop source) from git tracking; `*.psd` and
+  `.commandcode/` added to `.gitignore`.
+
+### Notes
+- No breaking changes to the library API surface.
+
+### Packaging
+- Package ID: `Varun.NvAPIWrapper.Net`
+- Current package version: `9.0.4`
+- Current library target framework: `net6.0`
+
 ## [9.0.3] - 2026-09-09
 
 ### Added

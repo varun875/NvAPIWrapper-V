@@ -1,4 +1,4 @@
-# Release Notes — 9.0.2 / 9.0.3
+# Release Notes — 9.0.2 / 9.0.3 / 9.0.4
 
 Consolidated history of the RTX 40/50 modernization releases. Replaces the
 overlapping per-pass summaries (`CHANGES_SUMMARY.md`, `COMPLETION_SUMMARY.md`,
@@ -6,6 +6,15 @@ overlapping per-pass summaries (`CHANGES_SUMMARY.md`, `COMPLETION_SUMMARY.md`,
 `VISUAL_SUMMARY.md`), removed 2026-09-09. For the canonical per-version log see
 [CHANGELOG.md](CHANGELOG.md); for usage see [QUICK_REFERENCE.md](QUICK_REFERENCE.md);
 for the technical roadmap see [GPU_SUPPORT_UPGRADE_GUIDE.md](GPU_SUPPORT_UPGRADE_GUIDE.md).
+
+## 9.0.4 — 2026-09-09
+
+- Test project retargeted `net6.0` → `net8.0`; 151 tests passing, zero warnings.
+- Nullable annotations on `DetectFamily` / `TryGetSpec` family.
+- Silenced all 41 CS1591 missing-XML-doc warnings.
+- Consolidated the six overlapping 9.0.2 summary docs into this note;
+  removed `Icon.psd` from git tracking.
+- No breaking changes to the library API surface.
 
 ## 9.0.3 — 2026-09-09
 

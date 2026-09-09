@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
-    <Version>9.0.3</Version>
+    <Version>9.0.4</Version>
     <Company>falahati.net</Company>
     <Description>NvAPIWrapper is a comprehensive .NET wrapper for the NVIDIA public API, featuring full support for RTX 40 (Ada) and RTX 50 (Blackwell) series. Now includes real-time power telemetry in Watts, automatic TDP detection, and modern C# features.</Description>
     <Authors>Soroush Falahati, Varun</Authors>
@@ -18,12 +18,20 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>nvidia;tesla;fermi;kepler;maxwell;pascal;turing;ampere;ada;blackwell;gpu;nvapi;monitoring;overclocking;cooling;power;watts;rtx40;rtx50</PackageTags>
     <PackageReleaseNotes>
-  Version 9.0.3
+  Version 9.0.4
 
-  - New unit test project (NvAPIWrapper.Tests) with 60+ tests covering
-    GPUPowerSpecDatabase, GPUFamilyClassifier, and enum coverage.
+  - Test project (NvAPIWrapper.Tests) retargeted to net8.0; 151 tests passing
+    with zero build warnings.
+  - Fixed GPUPowerSpecDatabase longest-pattern-first matching: laptop GPU names
+    (e.g. "RTX 4090 Laptop GPU") now resolve to the laptop entry instead of the
+    desktop entry; added a bare H100 fallback entry.
+  - Nullable annotations on GPUPowerSpecDatabase.TryGetSpec/GetDefaultTDP and
+    GPUFamilyClassifier.DetectFamily.
+  - Silenced all 41 CS1591 missing-XML-doc warnings (fan cooler V1 structs,
+    thermal cooler APIs, monitor capability properties, ToString overrides).
+  - Consolidated overlapping 9.0.2 summary docs into RELEASE_NOTES_9.0.x.md;
+    removed Icon.psd (Photoshop source) from git tracking.
   - No breaking changes to the library API surface.
-  - Release build validated successfully.
     </PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <IncludeSource>true</IncludeSource>
