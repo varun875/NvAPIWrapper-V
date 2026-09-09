@@ -8,8 +8,6 @@ on:
 jobs:
   publish:
     runs-on: windows-latest
-    permissions:
-      id-token: write  # required for Trusted Publishing
 
     steps:
       - name: Checkout
@@ -29,21 +27,5 @@ jobs:
       - name: Pack
         run: dotnet pack NvAPIWrapper/NvAPIWrapper.csproj -c Release -o ./nupkg --no-restore --no-build
 
-      - name: Get NuGet API key via Trusted Publishing
-        id: get-api-key
-        shell: pwsh
-        run: |
-          $oidcToken = Invoke-RestMethod `
-            -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" `
-            -Headers @{ Authorization = "Bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" } `
-            | Select-Object -ExpandProperty value
-          $response = Invoke-RestMethod `
-            -Uri "https://api.nuget.org/v1/authentication/authenticate" `
-            -Method POST `
-            -Headers @{ Authorization = "Bearer $oidcToken" } `
-            -ContentType "application/json"
-          Write-Output "::add-mask::$($response.tokenValue)"
-          "NUGET_API_KEY=$($response.tokenValue)" | Out-File -FilePath $env:GITHUB_ENV -Append
-
       - name: Publish to NuGet
-        run: dotnet nuget push "nupkg\Varun.NvAPIWrapper.Net.*.nupkg" --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push "nupkg\Varun.NvAPIWrapper.Net.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

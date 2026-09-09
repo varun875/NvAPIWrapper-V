@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>
-    <Version>9.0.2</Version>
+    <Version>9.0.3</Version>
     <Company>falahati.net</Company>
     <Description>NvAPIWrapper is a comprehensive .NET wrapper for the NVIDIA public API, featuring full support for RTX 40 (Ada) and RTX 50 (Blackwell) series. Now includes real-time power telemetry in Watts, automatic TDP detection, and modern C# features.</Description>
     <Authors>Soroush Falahati, Varun</Authors>
@@ -18,14 +18,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>nvidia;tesla;fermi;kepler;maxwell;pascal;turing;ampere;ada;blackwell;gpu;nvapi;monitoring;overclocking;cooling;power;watts;rtx40;rtx50</PackageTags>
     <PackageReleaseNotes>
-  Version 9.0.2
+  Version 9.0.3
 
-  - Kept all projects on net6.0 for compatibility and stable distribution.
-  - Resolved critical nullable-contract warning families across wrapper APIs (CS8765/CS8767/CS8625/CS86xx hotspots).
-  - Hardened equality/operator null handling in key Display/GPU/Mosaic/Stereo model types.
-  - Improved telemetry and fallback behavior in GPU power/thermal/usage flows.
-  - Expanded and stabilized GPU power spec matching logic and thread-safety.
-  - Added shared NVAPI capability-unavailable status helper for safer fallback paths.
+  - New unit test project (NvAPIWrapper.Tests) with 60+ tests covering
+    GPUPowerSpecDatabase, GPUFamilyClassifier, and enum coverage.
+  - No breaking changes to the library API surface.
   - Release build validated successfully.
     </PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
