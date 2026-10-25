@@ -78,4 +78,7 @@
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NvAPIWrapper.Tests" />
+  </ItemGroup>
 </Project>

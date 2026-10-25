@@ -3,15 +3,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace NvAPIWrapper.GPU
 {
     /// <summary>
-    ///     Contains known TDP/TGP specifications for NVIDIA GPUs.
-    ///     This database is used to convert NVAPI power percentage telemetry into actual watt values.
-    ///     The NVAPI private power topology API reports power as a percentage of the board's default power limit (TDP/TGP).
-    ///     Without knowing the reference TDP in watts, the percentage is meaningless for watt estimation.
+    ///     Contains model-level reference TDP/TGP specifications and caller-supplied overrides.
+    ///     Built-in values are legacy reference estimates, not measurements or verified per-board firmware limits.
+    ///     Prefer driver-reported power data. Reference estimates require explicit opt-in in telemetry snapshots.
     /// </summary>
     public static class GPUPowerSpecDatabase
     {
@@ -21,7 +21,7 @@ namespace NvAPIWrapper.GPU
         public sealed class GPUPowerSpec
         {
             /// <summary>
-            ///     GPU model name pattern (matched against NvAPI FullName).
+            ///     GPU model name (matched exactly after normalization and explicit alias resolution).
             /// </summary>
             public string NamePattern { get; }
 
@@ -31,12 +31,12 @@ namespace NvAPIWrapper.GPU
             public double DefaultTDPWatts { get; }
 
             /// <summary>
-            ///     Maximum board power limit in watts (when slider is at max in tools like Afterburner).
+            ///     Legacy reference maximum in watts. Built-in values are not verified slider limits.
             /// </summary>
             public double MaxTDPWatts { get; }
 
             /// <summary>
-            ///     Minimum board power limit in watts (when power limit is reduced).
+            ///     Legacy reference minimum in watts. Built-in values are not verified slider limits.
             /// </summary>
             public double MinTDPWatts { get; }
 
@@ -45,30 +45,30 @@ namespace NvAPIWrapper.GPU
             /// </summary>
             public string Architecture { get; }
 
-            internal GPUPowerSpec(string namePattern, double defaultTdp, double maxTdp, double minTdp, string architecture)
+            /// <summary>
+            ///     Gets whether this specification was explicitly supplied by the application.
+            /// </summary>
+            public bool IsUserProvided { get; }
+
+            internal string NormalizedName { get; }
+
+            internal GPUPowerSpec(string namePattern, double defaultTdp, double maxTdp, double minTdp,
+                string architecture, bool isUserProvided = false)
             {
                 NamePattern = namePattern;
                 DefaultTDPWatts = defaultTdp;
                 MaxTDPWatts = maxTdp;
                 MinTDPWatts = minTdp;
                 Architecture = architecture;
+                IsUserProvided = isUserProvided;
+                NormalizedName = NormalizeName(namePattern);
             }
         }
 
         private static readonly object _lock = new object();
 
-        static GPUPowerSpecDatabase()
-        {
-            // The list below is grouped by GPU series for readability, so enforce
-            // longest-pattern-first ordering here. TryGetSpec returns the first
-            // substring match, which must be the most specific pattern
-            // (e.g. "RTX 4090 Laptop" must win over "RTX 4090").
-            KnownSpecs.Sort((a, b) => b.NamePattern.Length.CompareTo(a.NamePattern.Length));
-        }
-
-        // Grouped by GPU series for readability; sorted by pattern length
-        // descending in the static constructor so longer (more specific)
-        // patterns match first (e.g. "RTX 4080 SUPER" before "RTX 4080")
+        // Legacy reference data, grouped by series. Source provenance was not recorded
+        // for these entries; do not use the limits as hardware-verified control ranges.
         private static readonly List<GPUPowerSpec> KnownSpecs = new List<GPUPowerSpec>
         {
             // =====================================================
@@ -224,15 +224,42 @@ namespace NvAPIWrapper.GPU
             new GPUPowerSpec("TITAN Xp", 250, 300, 200, "Pascal"),
         };
 
+        private static readonly Dictionary<string, GPUPowerSpec> BuiltInSpecs = KnownSpecs
+            .GroupBy(spec => spec.NormalizedName, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+        private static readonly Dictionary<string, GPUPowerSpec> CustomSpecs =
+            new Dictionary<string, GPUPowerSpec>(StringComparer.Ordinal);
+
+        // Only aliases for a known variant belong here. Never strip arbitrary model
+        // suffixes, memory capacities, Ti/SUPER, or laptop markers to obtain a match.
+        private static readonly Dictionary<string, string> Aliases = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["A100 SXM4 40GB"] = "A100 SXM",
+            ["A100 SXM4 80GB"] = "A100 SXM"
+        };
+
         /// <summary>
-        ///     All known GPU power specifications in the database.
+        ///     Gets a read-only snapshot of the reference specifications and current custom overrides.
+        ///     Enumeration is safe while other threads register or remove overrides.
         /// </summary>
-        public static IReadOnlyList<GPUPowerSpec> AllSpecs => KnownSpecs;
+        public static IReadOnlyList<GPUPowerSpec> AllSpecs
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return Array.AsReadOnly(BuiltInSpecs.Values
+                        .Where(spec => !CustomSpecs.ContainsKey(spec.NormalizedName))
+                        .Concat(CustomSpecs.Values).OrderBy(spec => spec.NamePattern, StringComparer.Ordinal).ToArray());
+                }
+            }
+        }
 
         /// <summary>
         ///     Tries to find a matching power spec for the given GPU name.
-        ///     Matches are case-insensitive and use substring matching.
-        ///     More specific names (longer patterns) are preferred.
+        ///     Matches are exact after normalizing case, vendor prefixes, spacing, separators,
+        ///     and explicitly supported aliases. Unknown variants do not match a shorter GPU name.
         /// </summary>
         /// <param name="gpuFullName">The GPU full name from NVAPI (e.g. "NVIDIA GeForce RTX 4090").</param>
         /// <param name="spec">The matched power specification, or null.</param>
@@ -246,21 +273,17 @@ namespace NvAPIWrapper.GPU
                 return false;
             }
 
+            var name = NormalizeName(gpuFullName);
             lock (_lock)
             {
-                // List is pre-sorted by NamePattern.Length descending,
-                // so the first substring match is already the most specific.
-                var bestMatch = KnownSpecs
-                    .FirstOrDefault(s => gpuFullName.IndexOf(s.NamePattern, StringComparison.OrdinalIgnoreCase) >= 0);
-
-                if (bestMatch != null)
+                if (CustomSpecs.TryGetValue(name, out spec) || BuiltInSpecs.TryGetValue(name, out spec))
                 {
-                    spec = bestMatch;
                     return true;
                 }
-            }
 
-            return false;
+                return Aliases.TryGetValue(name, out var canonicalName) &&
+                       (CustomSpecs.TryGetValue(canonicalName, out spec) || BuiltInSpecs.TryGetValue(canonicalName, out spec));
+            }
         }
 
         /// <summary>
@@ -277,7 +300,7 @@ namespace NvAPIWrapper.GPU
         ///     Registers a custom GPU power specification at runtime.
         ///     This allows users to add support for GPUs not yet in the built-in database.
         /// </summary>
-        /// <param name="namePattern">Name pattern to match (case-insensitive substring of GPU FullName).</param>
+        /// <param name="namePattern">Exact GPU model name, normalized like GPU FullName.</param>
         /// <param name="defaultTdpWatts">Default board TDP in watts.</param>
         /// <param name="maxTdpWatts">Maximum board power limit in watts.</param>
         /// <param name="minTdpWatts">Minimum board power limit in watts.</param>
@@ -289,24 +312,72 @@ namespace NvAPIWrapper.GPU
             double minTdpWatts,
             string architecture = "Unknown")
         {
-            if (string.IsNullOrWhiteSpace(namePattern))
+            if (string.IsNullOrWhiteSpace(namePattern) || NormalizeName(namePattern).Length == 0)
             {
                 throw new ArgumentException("Name pattern cannot be null or empty.", nameof(namePattern));
             }
 
-            if (defaultTdpWatts <= 0)
+            GPUPowerMath.ValidateReference(defaultTdpWatts, nameof(defaultTdpWatts));
+            GPUPowerMath.ValidateReference(maxTdpWatts, nameof(maxTdpWatts));
+            GPUPowerMath.ValidateReference(minTdpWatts, nameof(minTdpWatts));
+            if (minTdpWatts > defaultTdpWatts || maxTdpWatts < defaultTdpWatts)
             {
-                throw new ArgumentOutOfRangeException(nameof(defaultTdpWatts));
+                throw new ArgumentException("Power limits must satisfy minimum <= default <= maximum.");
+            }
+
+            if (string.IsNullOrWhiteSpace(architecture))
+            {
+                throw new ArgumentException("Architecture cannot be empty.", nameof(architecture));
             }
 
             lock (_lock)
             {
-                // Insert at the beginning so user-registered specs take priority
-                KnownSpecs.Insert(0, new GPUPowerSpec(namePattern, defaultTdpWatts, maxTdpWatts, minTdpWatts, architecture));
-
-                // Re-sort by pattern length descending to maintain match-specificity ordering
-                KnownSpecs.Sort((a, b) => b.NamePattern.Length.CompareTo(a.NamePattern.Length));
+                var spec = new GPUPowerSpec(namePattern, defaultTdpWatts, maxTdpWatts, minTdpWatts, architecture, true);
+                CustomSpecs[spec.NormalizedName] = spec;
             }
+        }
+
+        /// <summary>
+        ///     Removes a custom specification, revealing any built-in reference entry again.
+        /// </summary>
+        /// <param name="namePattern">The model name originally registered.</param>
+        /// <returns>True if a custom specification was removed.</returns>
+        public static bool UnregisterSpec(string namePattern)
+        {
+            if (string.IsNullOrWhiteSpace(namePattern))
+            {
+                return false;
+            }
+
+            lock (_lock)
+            {
+                return CustomSpecs.Remove(NormalizeName(namePattern));
+            }
+        }
+
+        private static string NormalizeName(string name)
+        {
+            name = name.Replace("™", "").Replace("®", "").Normalize(NormalizationForm.FormKC).ToUpperInvariant();
+            name = Regex.Replace(name, @"[\s_\-]+", " ").Trim();
+            foreach (var prefix in new[] { "NVIDIA ", "GEFORCE ", "QUADRO ", "TESLA " })
+            {
+                if (name.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    name = name.Substring(prefix.Length);
+                }
+            }
+
+            foreach (var suffix in new[] { " GPU", " GENERATION" })
+            {
+                if (name.EndsWith(suffix, StringComparison.Ordinal))
+                {
+                    name = name.Substring(0, name.Length - suffix.Length);
+                }
+            }
+
+            name = Regex.Replace(name, @"\bMOBILE\b", "LAPTOP");
+            name = Regex.Replace(name, @"\bPCI E\b", "PCIE");
+            return Regex.Replace(name, @"\b(\d+) GB\b", "$1GB").Trim();
         }
     }
 }

@@ -12,4 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\NvAPIWrapper\NvAPIWrapper.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NvAPIWrapper.Tests" />
+  </ItemGroup>
 </Project>

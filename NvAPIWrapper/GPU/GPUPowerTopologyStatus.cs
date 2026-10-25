@@ -23,14 +23,13 @@ namespace NvAPIWrapper.GPU
 
         /// <summary>
         ///     Gets the current power usage in per cent mille (PCM).
-        ///     A value of 100000 PCM = 100% of the current power limit.
+        ///     A value of 100000 PCM = 100% of the domain's reference power.
         /// </summary>
         public uint PowerUsageInPCM { get; }
 
         /// <summary>
         ///     Gets the current power usage in percentage (0-100+).
-        ///     100% means the GPU is at its current power limit.
-        ///     Values above 100% indicate transient power excursion.
+        ///     This is not GPU utilization, or a percentage of an adjusted power slider.
         /// </summary>
         public float PowerUsageInPercent
         {
@@ -46,22 +45,24 @@ namespace NvAPIWrapper.GPU
         /// <returns>Estimated current power usage in watts.</returns>
         public double EstimatePowerUsageInWatts(double powerLimitInWatts)
         {
-            if (powerLimitInWatts <= 0)
+            if (!GPUPowerMath.TryEstimate(PowerUsageInPercent, powerLimitInWatts, out var watts))
             {
-                throw new ArgumentOutOfRangeException(nameof(powerLimitInWatts));
+                throw new OverflowException("The estimated watt value is not finite.");
             }
 
-            return powerLimitInWatts * PowerUsageInPercent / 100d;
+            return watts;
         }
 
         /// <summary>
         ///     Estimates current power usage in watts using the built-in GPU TDP database.
-        ///     Returns null if the GPU is not found in the database.
+        ///     This explicitly opts into unverified model-level reference estimates for the Board domain.
+        ///     Returns null for unknown models and for domains without a board-power reference.
         /// </summary>
         /// <param name="gpuFullName">The GPU full name from NVAPI (e.g. "NVIDIA GeForce RTX 4090").</param>
         /// <returns>Estimated power in watts, or null if the GPU TDP is unknown.</returns>
         public double? EstimatePowerUsageInWattsAuto(string gpuFullName)
         {
+            if (Domain != PowerTopologyDomain.Board) return null;
             var tdp = GPUPowerSpecDatabase.GetDefaultTDP(gpuFullName);
 
             if (!tdp.HasValue)
@@ -69,7 +70,7 @@ namespace NvAPIWrapper.GPU
                 return null;
             }
 
-            return tdp.Value * PowerUsageInPercent / 100d;
+            return EstimatePowerUsageInWatts(tdp.Value);
         }
 
         /// <inheritdoc />

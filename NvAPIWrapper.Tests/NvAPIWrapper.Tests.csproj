@@ -19,5 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NvAPIWrapper\NvAPIWrapper.csproj" />
+    <ProjectReference Include="..\NvAPIRealtimeMonitor\NvAPIRealtimeMonitor.csproj" />
   </ItemGroup>
 </Project>

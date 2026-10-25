@@ -71,27 +71,27 @@ namespace NvAPIWrapper.GPU
         public class PowerLimitDetails
         {
             /// <summary>
-            ///     Current power consumption in watts (auto-resolved from TDP database).
+            ///     Current power consumption in watts (driver-reported or explicitly estimated).
             ///     -1 if unavailable.
             /// </summary>
-            public double CurrentPowerW { get; set; }
+            public double CurrentPowerW { get; set; } = -1;
 
             /// <summary>
-            ///     Default TDP in watts (from built-in database).
+            ///     Default power reference in watts. See Source on the captured snapshot for provenance.
             ///     -1 if unknown GPU.
             /// </summary>
-            public double DefaultTDPW { get; set; }
+            public double DefaultTDPW { get; set; } = -1;
 
             /// <summary>
             ///     Currently active power limit in watts (accounts for user slider).
             ///     -1 if unavailable.
             /// </summary>
-            public double ActivePowerLimitW { get; set; }
+            public double ActivePowerLimitW { get; set; } = -1;
 
             /// <summary>
-            ///     Power consumption as percentage of limit (0-100+)
+            ///     Power consumption relative to the enforced/configured limit, or -1 when unavailable.
             /// </summary>
-            public double PowerUtilizationPercent { get; set; }
+            public double PowerUtilizationPercent { get; set; } = -1;
 
             /// <summary>
             ///     Whether power limit is being exceeded (throttling triggered)
@@ -99,9 +99,18 @@ namespace NvAPIWrapper.GPU
             public bool IsExceedingLimit { get; set; }
 
             /// <summary>
-            ///     Whether TDP information was found in the built-in database.
+            ///     Whether a power reference is available.
             /// </summary>
             public bool IsTDPKnown { get; set; }
+
+            /// <summary>Gets the source of the current watt reading, or its estimation reference.</summary>
+            public GPUPowerDataSource Source { get; internal set; }
+
+            /// <summary>Gets whether the current watt reading was estimated.</summary>
+            public bool IsEstimated { get; internal set; }
+
+            /// <summary>Gets whether the power-limit status was queried successfully.</summary>
+            public bool IsLimitStatusAvailable { get; internal set; }
 
             /// <summary>
             ///     Returns a human-readable summary of the power limit state.
@@ -109,14 +118,11 @@ namespace NvAPIWrapper.GPU
             /// <returns>A formatted string with current power, active limit, and utilization.</returns>
             public override string ToString()
             {
-                if (!IsTDPKnown)
-                {
-                    return $"Power: {PowerUtilizationPercent:F1}% (TDP unknown - use GPUPowerSpecDatabase.RegisterSpec)" +
-                           (IsExceedingLimit ? " [EXCEEDING]" : string.Empty);
-                }
-
-                return $"Power: {CurrentPowerW:F1}W / {ActivePowerLimitW:F1}W ({PowerUtilizationPercent:F1}%)" +
-                       (IsExceedingLimit ? " [EXCEEDING]" : string.Empty);
+                var power = CurrentPowerW >= 0 ? $"{(IsEstimated ? "~" : "")}{CurrentPowerW:F1}W ({Source})" : "N/A";
+                var limit = ActivePowerLimitW > 0 ? $"{ActivePowerLimitW:F1}W" : "N/A";
+                var percent = PowerUtilizationPercent >= 0 ? $"{PowerUtilizationPercent:F1}%" : "N/A";
+                return $"Power: {power} / {limit} ({percent})" +
+                       (IsLimitStatusAvailable ? (IsExceedingLimit ? " [POWER LIMITED]" : string.Empty) : " [LIMIT STATUS UNAVAILABLE]");
             }
         }
 
@@ -247,6 +253,9 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         public PowerLimitDetails PowerLimitStatus { get; }
 
+        /// <summary>Gets the latest power snapshot; null after an unsuccessful refresh.</summary>
+        public GPUPowerTelemetrySnapshot? PowerSnapshot { get; private set; }
+
         /// <summary>
         ///     Thermal throttle information
         /// </summary>
@@ -283,6 +292,11 @@ namespace NvAPIWrapper.GPU
         {
             get
             {
+                if (PowerSnapshot == null || !PowerSnapshot.IsThrottleStatusAvailable)
+                {
+                    return "UNKNOWN: Power/limit telemetry unavailable";
+                }
+
                 if (IsThrottled && PowerLimitStatus.IsExceedingLimit && ThermalThrottleStatus.IsThrottlingActive)
                 {
                     return "CRITICAL: Thermal AND Power Throttling";
@@ -325,6 +339,7 @@ namespace NvAPIWrapper.GPU
         public bool Refresh()
         {
             var anySuccess = false;
+            ApplyPowerSnapshot(null);
 
             // Refresh performance state
             if (GPUApi.TryGetCurrentPerformanceState(PhysicalGPU.Handle, out var perfState))
@@ -338,17 +353,7 @@ namespace NvAPIWrapper.GPU
             {
                 anySuccess = true;
 
-                // Power percentages
-                PowerLimitStatus.PowerUtilizationPercent = snapshot.BoardPowerUsageInPercent ?? 0;
-                PowerLimitStatus.IsTDPKnown = snapshot.IsTDPKnown;
-                PowerLimitStatus.IsExceedingLimit = snapshot.IsPowerLimitActive;
-                BoostClockInfo.IsThrottledByPower = snapshot.IsPowerLimitActive;
-                BoostClockInfo.IsThrottledByTemperature = snapshot.IsThermalLimitActive;
-
-                // Watt-based values
-                PowerLimitStatus.DefaultTDPW = snapshot.DefaultTDPInWatts ?? -1;
-                PowerLimitStatus.CurrentPowerW = snapshot.BoardPowerDrawInWatts ?? -1;
-                PowerLimitStatus.ActivePowerLimitW = snapshot.CurrentPowerLimitInWatts ?? -1;
+                ApplyPowerSnapshot(snapshot);
             }
 
             // Refresh clocks
@@ -419,6 +424,22 @@ namespace NvAPIWrapper.GPU
             _wasThrottling = ThermalThrottleStatus.IsThrottlingActive;
 
             return anySuccess;
+        }
+
+        internal void ApplyPowerSnapshot(GPUPowerTelemetrySnapshot? snapshot)
+        {
+            PowerSnapshot = snapshot;
+            PowerLimitStatus.PowerUtilizationPercent = snapshot?.PowerUsageRelativeToLimitInPercent ?? -1;
+            PowerLimitStatus.IsTDPKnown = snapshot?.IsTDPKnown == true;
+            PowerLimitStatus.IsLimitStatusAvailable = snapshot?.IsThrottleStatusAvailable == true;
+            PowerLimitStatus.IsExceedingLimit = snapshot?.IsPowerLimitActive == true;
+            PowerLimitStatus.Source = snapshot?.BoardPower.Source ?? GPUPowerDataSource.Unavailable;
+            PowerLimitStatus.IsEstimated = snapshot?.BoardPower.IsEstimated == true;
+            PowerLimitStatus.DefaultTDPW = snapshot?.DefaultTDPInWatts ?? -1;
+            PowerLimitStatus.CurrentPowerW = snapshot?.BoardPowerDrawInWatts ?? -1;
+            PowerLimitStatus.ActivePowerLimitW = snapshot?.EnforcedPowerLimit.Watts ?? snapshot?.CurrentPowerLimitInWatts ?? -1;
+            BoostClockInfo.IsThrottledByPower = snapshot?.IsPowerLimitActive == true;
+            BoostClockInfo.IsThrottledByTemperature = snapshot?.IsThermalLimitActive == true;
         }
 
         private static DynamicPState MapPerformanceState(PerformanceStateId stateId)

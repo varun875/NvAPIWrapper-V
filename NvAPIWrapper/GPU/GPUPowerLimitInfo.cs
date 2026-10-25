@@ -70,10 +70,16 @@ namespace NvAPIWrapper.GPU
         /// <returns>An object describing min/default/max power limits in watts.</returns>
         public PowerLimitInWatts ToWatts(double defaultTDPInWatts)
         {
+            GPUPowerMath.ValidateReference(defaultTDPInWatts, nameof(defaultTDPInWatts));
+            if (!GPUPowerMath.TryEstimate(MinimumPowerInPercent, defaultTDPInWatts, out var minimum) ||
+                !GPUPowerMath.TryEstimate(DefaultPowerInPercent, defaultTDPInWatts, out var defaultValue) ||
+                !GPUPowerMath.TryEstimate(MaximumPowerInPercent, defaultTDPInWatts, out var maximum))
+            {
+                throw new System.OverflowException("The converted power limit is not finite.");
+            }
+
             return new PowerLimitInWatts(
-                defaultTDPInWatts * MinimumPowerInPercent / 100d,
-                defaultTDPInWatts * DefaultPowerInPercent / 100d,
-                defaultTDPInWatts * MaximumPowerInPercent / 100d
+                minimum, defaultValue, maximum
             );
         }
 

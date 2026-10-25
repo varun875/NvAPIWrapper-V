@@ -42,7 +42,12 @@ namespace NvAPIWrapper.GPU
         /// <returns>The current power target in watts.</returns>
         public double ToWatts(double defaultTDPInWatts)
         {
-            return defaultTDPInWatts * PowerTargetInPercent / 100d;
+            if (!GPUPowerMath.TryEstimate(PowerTargetInPercent, defaultTDPInWatts, out var watts))
+            {
+                throw new System.OverflowException("The converted power limit is not finite.");
+            }
+
+            return watts;
         }
 
         /// <inheritdoc />

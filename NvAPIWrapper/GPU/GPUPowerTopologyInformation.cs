@@ -93,10 +93,7 @@ namespace NvAPIWrapper.GPU
             double powerLimitInWatts,
             out double estimatedPowerUsageInWatts)
         {
-            if (powerLimitInWatts <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(powerLimitInWatts));
-            }
+            GPUPowerMath.ValidateReference(powerLimitInWatts, nameof(powerLimitInWatts));
 
             estimatedPowerUsageInWatts = 0;
 
@@ -105,47 +102,62 @@ namespace NvAPIWrapper.GPU
                 return false;
             }
 
-            estimatedPowerUsageInWatts = powerLimitInWatts * powerUsageInPercent / 100d;
-            return true;
+            return GPUPowerMath.TryEstimate(powerUsageInPercent, powerLimitInWatts, out estimatedPowerUsageInWatts);
         }
 
         /// <summary>
-        ///     Tries to automatically estimate board power usage in watts using the built-in GPU TDP database.
-        ///     No manual TDP value required — the GPU's power specification is looked up automatically.
+        ///     Tries to get board power in watts using the same driver-first rules as a power snapshot.
+        ///     Use the snapshot's BoardPower property when source and estimation metadata are needed.
         /// </summary>
         /// <param name="estimatedPowerUsageInWatts">Estimated board power usage in watts when available.</param>
-        /// <returns>True when both telemetry and TDP are available; otherwise false.</returns>
+        /// <returns>True when a direct or driver-reference-based watt reading is available.</returns>
         public bool TryGetBoardPowerUsageInWatts(out double estimatedPowerUsageInWatts)
         {
-            estimatedPowerUsageInWatts = 0;
+            return TryGetBoardPowerUsageInWatts(GPUPowerTelemetryOptions.Default, out estimatedPowerUsageInWatts);
+        }
 
-            var tdp = GPUPowerSpecDatabase.GetDefaultTDP(PhysicalGPU.FullName);
+        /// <summary>Gets board watts using explicitly configured power-reporting options.</summary>
+        /// <param name="options">Controls power reference and optional database estimates.</param>
+        /// <param name="powerUsageInWatts">Available board power, or zero when the method returns false.</param>
+        /// <returns>True when a direct or estimated watt reading is available.</returns>
+        public bool TryGetBoardPowerUsageInWatts(GPUPowerTelemetryOptions options, out double powerUsageInWatts)
+        {
+            powerUsageInWatts = 0;
 
-            if (!tdp.HasValue)
+            if (!PhysicalGPU.TryGetPowerTelemetrySnapshot(options, out var snapshot) || !snapshot!.BoardPowerDrawInWatts.HasValue)
             {
                 return false;
             }
 
-            return TryGetEstimatedPowerUsageInWatts(PowerTopologyDomain.Board, tdp.Value, out estimatedPowerUsageInWatts);
+            powerUsageInWatts = snapshot.BoardPowerDrawInWatts.Value;
+            return true;
         }
 
         /// <summary>
-        ///     Tries to automatically estimate GPU-domain power usage in watts using the built-in GPU TDP database.
+        ///     Tries to get GPU-domain watts. A board TDP cannot establish a GPU-domain reference,
+        ///     so use TryGetEstimatedPowerUsageInWatts with an explicit reference, or snapshot options.
         /// </summary>
         /// <param name="estimatedPowerUsageInWatts">Estimated GPU power usage in watts when available.</param>
         /// <returns>True when both telemetry and TDP are available; otherwise false.</returns>
         public bool TryGetGPUPowerUsageInWatts(out double estimatedPowerUsageInWatts)
         {
-            estimatedPowerUsageInWatts = 0;
+            return TryGetGPUPowerUsageInWatts(GPUPowerTelemetryOptions.Default, out estimatedPowerUsageInWatts);
+        }
 
-            var tdp = GPUPowerSpecDatabase.GetDefaultTDP(PhysicalGPU.FullName);
-
-            if (!tdp.HasValue)
+        /// <summary>Gets GPU-domain watts using an explicit domain reference in the reporting options.</summary>
+        /// <param name="options">Must supply a GPU-domain reference for watt estimation.</param>
+        /// <param name="powerUsageInWatts">Estimated power, or zero when the method returns false.</param>
+        /// <returns>True when both GPU-domain telemetry and a domain reference are available.</returns>
+        public bool TryGetGPUPowerUsageInWatts(GPUPowerTelemetryOptions options, out double powerUsageInWatts)
+        {
+            powerUsageInWatts = 0;
+            if (!PhysicalGPU.TryGetPowerTelemetrySnapshot(options, out var snapshot) || !snapshot!.GPUPowerDrawInWatts.HasValue)
             {
                 return false;
             }
 
-            return TryGetEstimatedPowerUsageInWatts(PowerTopologyDomain.GPU, tdp.Value, out estimatedPowerUsageInWatts);
+            powerUsageInWatts = snapshot.GPUPowerDrawInWatts.Value;
+            return true;
         }
     }
 }

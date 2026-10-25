@@ -180,7 +180,6 @@ namespace NvAPIWrapper.Tests
         }
 
         // ── GetDefaultTDP tests ────────────────────────────────
-        // (These must run BEFORE RegisterSpec tests to avoid static state pollution)
 
         [Fact]
         public void GetDefaultTDP_ReturnsCorrectValue()
@@ -224,33 +223,36 @@ namespace NvAPIWrapper.Tests
         }
 
         // ── RegisterSpec tests ─────────────────────────────────
-        // NOTE: These tests modify the static GPUPowerSpecDatabase list.
-        // RegisterSpec is additive; added entries persist for the test session.
-        // xUnit runs tests sequentially by default, so these must stay at the END
-        // of this class to avoid interfering with earlier pure-read tests.
+        // Always remove overrides: xUnit does not guarantee test order.
 
         [Fact]
         public void RegisterSpec_AddsNewGPU()
         {
-            GPUPowerSpecDatabase.RegisterSpec("RTX 9090", 999, 1100, 700, "Future");
-
-            var found = GPUPowerSpecDatabase.TryGetSpec("NVIDIA GeForce RTX 9090", out var spec);
-            Assert.True(found);
-            Assert.NotNull(spec);
-            Assert.Equal(999.0, spec!.DefaultTDPWatts);
-            Assert.Equal("Future", spec.Architecture);
+            try
+            {
+                GPUPowerSpecDatabase.RegisterSpec("RTX 9090", 999, 1100, 700, "Future");
+                Assert.True(GPUPowerSpecDatabase.TryGetSpec("NVIDIA GeForce RTX 9090", out var spec));
+                Assert.Equal(999.0, spec!.DefaultTDPWatts);
+                Assert.Equal("Future", spec.Architecture);
+                Assert.True(spec.IsUserProvided);
+            }
+            finally { GPUPowerSpecDatabase.UnregisterSpec("RTX 9090"); }
         }
 
         [Fact]
         public void RegisterSpec_UserSpecTakesPriority()
         {
-            GPUPowerSpecDatabase.RegisterSpec("RTX 4090", 500, 600, 350, "Custom");
-
-            var found = GPUPowerSpecDatabase.TryGetSpec("NVIDIA GeForce RTX 4090", out var spec);
-            Assert.True(found);
-            Assert.NotNull(spec);
-            // Both "RTX 4090" have same length (9), user entry matches first after RegisterSpec
-            Assert.Equal(500.0, spec!.DefaultTDPWatts);
+            try
+            {
+                // A different test class may read standard desktop entries concurrently.
+                GPUPowerSpecDatabase.RegisterSpec("TITAN Xp", 270, 300, 200, "Custom");
+                Assert.True(GPUPowerSpecDatabase.TryGetSpec("NVIDIA TITAN Xp", out var spec));
+                Assert.Equal(270.0, spec!.DefaultTDPWatts);
+                GPUPowerSpecDatabase.RegisterSpec("nvidia titan xp", 280, 300, 200, "Custom");
+                Assert.Equal(280.0, GPUPowerSpecDatabase.GetDefaultTDP("TITAN Xp"));
+            }
+            finally { GPUPowerSpecDatabase.UnregisterSpec("TITAN Xp"); }
+            Assert.Equal(250.0, GPUPowerSpecDatabase.GetDefaultTDP("TITAN Xp"));
         }
 
         [Fact]
@@ -267,14 +269,99 @@ namespace NvAPIWrapper.Tests
         }
 
         [Fact]
-        public void RegisterSpec_ReSortsByPatternLength()
+        public void RegisterSpec_MatchesExactVariant()
         {
-            GPUPowerSpecDatabase.RegisterSpec("RTX 4090 Ti SUPER", 600, 700, 400, "Custom");
+            try
+            {
+                GPUPowerSpecDatabase.RegisterSpec("RTX 4090 Ti SUPER", 600, 700, 400, "Custom");
+                Assert.True(GPUPowerSpecDatabase.TryGetSpec("NVIDIA GeForce RTX 4090 Ti SUPER", out var spec));
+                Assert.Equal("RTX 4090 Ti SUPER", spec!.NamePattern);
+                Assert.Equal(450.0, GPUPowerSpecDatabase.GetDefaultTDP("RTX 4090"));
+            }
+            finally { GPUPowerSpecDatabase.UnregisterSpec("RTX 4090 Ti SUPER"); }
+        }
 
-            var found = GPUPowerSpecDatabase.TryGetSpec("NVIDIA GeForce RTX 4090 Ti SUPER", out var spec);
-            Assert.True(found);
-            Assert.NotNull(spec);
-            Assert.Equal("RTX 4090 Ti SUPER", spec!.NamePattern);
+        [Theory]
+        [InlineData("NVIDIA RTX A2000")]
+        [InlineData("NVIDIA RTX A2000 12GB")]
+        [InlineData("NVIDIA A100 UNKNOWN")]
+        [InlineData("NVIDIA RTX 40900")]
+        [InlineData("NVIDIA RTX 4090 Ti")]
+        [InlineData("NVIDIA RTX 4090 Laptop Super")]
+        [InlineData("NVIDIA RTX 5060 Max-Q")]
+        [InlineData("AMD A2")]
+        [InlineData("prefix A10 suffix")]
+        [InlineData("NVIDIA RTX 3080 20GB")]
+        public void TryGetSpec_UnknownModelsNeverInheritPartialMatches(string name)
+        {
+            Assert.False(GPUPowerSpecDatabase.TryGetSpec(name, out var spec));
+            Assert.Null(spec);
+        }
+
+        [Theory]
+        [InlineData("NVIDIA A100-SXM4-40GB", "A100 SXM", 400)]
+        [InlineData("NVIDIA A100_SXM4_80GB", "A100 SXM", 400)]
+        [InlineData("  nvidia  geforce  rtx  4090  laptop  gpu ", "RTX 4090 Laptop", 150)]
+        [InlineData("NVIDIA GeForce RTX 4090 Mobile GPU", "RTX 4090 Laptop", 150)]
+        [InlineData("NVIDIA RTX 6000 Ada Generation", "RTX 6000 Ada", 300)]
+        [InlineData("NVIDIA RTX 4060 Ti 16 GB", "RTX 4060 Ti 16GB", 165)]
+        [InlineData("NVIDIA H100 PCI-E", "H100 PCIe", 350)]
+        [InlineData("NVIDIA L40S", "L40S", 350)]
+        [InlineData("NVIDIA® GeForce™ RTX 4090", "RTX 4090", 450)]
+        public void TryGetSpec_NormalizesOnlyKnownDecorationsAndAliases(string name, string expectedName, double watts)
+        {
+            Assert.True(GPUPowerSpecDatabase.TryGetSpec(name, out var spec));
+            Assert.Equal(expectedName, spec!.NamePattern);
+            Assert.Equal(watts, spec.DefaultTDPWatts);
+            Assert.False(spec.IsUserProvided);
+        }
+
+        [Theory]
+        [InlineData(double.NaN, 150, 50)]
+        [InlineData(double.PositiveInfinity, 150, 50)]
+        [InlineData(100, double.PositiveInfinity, 50)]
+        [InlineData(100, 150, double.NaN)]
+        [InlineData(100, 90, 50)]
+        [InlineData(100, 150, 110)]
+        [InlineData(100, 150, -10)]
+        public void RegisterSpec_RejectsNonFiniteAndInvertedLimits(double normal, double maximum, double minimum)
+        {
+            Assert.ThrowsAny<System.ArgumentException>(() =>
+                GPUPowerSpecDatabase.RegisterSpec("Invalid test specification", normal, maximum, minimum));
+        }
+
+        [Fact]
+        public void AllSpecs_IsAnImmutablePointInTimeSnapshot()
+        {
+            var before = GPUPowerSpecDatabase.AllSpecs;
+            var count = before.Count;
+            try
+            {
+                GPUPowerSpecDatabase.RegisterSpec("Snapshot test GPU", 100, 150, 50);
+                Assert.Equal(count, before.Count);
+                Assert.DoesNotContain(before, s => s.NamePattern == "Snapshot test GPU");
+                Assert.Throws<System.NotSupportedException>(() =>
+                    ((System.Collections.Generic.IList<GPUPowerSpecDatabase.GPUPowerSpec>)before).Clear());
+            }
+            finally { GPUPowerSpecDatabase.UnregisterSpec("Snapshot test GPU"); }
+        }
+
+        [Fact]
+        public void ConcurrentRegistrationAndEnumerationDoNotCorruptTheRegistry()
+        {
+            try
+            {
+                System.Threading.Tasks.Parallel.For(0, 50, i =>
+                {
+                    GPUPowerSpecDatabase.RegisterSpec("Concurrent test GPU " + i, 100, 150, 50);
+                    foreach (var spec in GPUPowerSpecDatabase.AllSpecs) Assert.True(spec.DefaultTDPWatts > 0);
+                    Assert.True(GPUPowerSpecDatabase.TryGetSpec("Concurrent test GPU " + i, out _));
+                });
+            }
+            finally
+            {
+                for (var i = 0; i < 50; i++) GPUPowerSpecDatabase.UnregisterSpec("Concurrent test GPU " + i);
+            }
         }
     }
 }

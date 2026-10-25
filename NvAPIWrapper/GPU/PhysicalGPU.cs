@@ -10,6 +10,7 @@ using NvAPIWrapper.Native.GPU;
 using NvAPIWrapper.Native.GPU.Structures;
 using NvAPIWrapper.Native.Helpers;
 using NvAPIWrapper.Native.Interfaces.GPU;
+using NvAPIWrapper.Native.Power;
 
 namespace NvAPIWrapper.GPU
 {
@@ -309,6 +310,20 @@ namespace NvAPIWrapper.GPU
         /// <returns>True when at least one power telemetry source is available; otherwise false.</returns>
         public bool TryGetPowerTelemetrySnapshot(out GPUPowerTelemetrySnapshot? snapshot)
         {
+            return TryGetPowerTelemetrySnapshot(GPUPowerTelemetryOptions.Default, out snapshot);
+        }
+
+        /// <summary>
+        ///     Captures power data using optional NVML readings and explicitly selected estimation fallbacks.
+        ///     Unsupported fields remain unavailable; real NVAPI errors still propagate to the caller.
+        /// </summary>
+        /// <param name="options">Controls domain references and opt-in legacy reference estimates.</param>
+        /// <param name="snapshot">The snapshot when at least one telemetry source is available.</param>
+        /// <returns>True if some telemetry was available.</returns>
+        public bool TryGetPowerTelemetrySnapshot(GPUPowerTelemetryOptions options, out GPUPowerTelemetrySnapshot? snapshot)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            var driverPower = options.UseNVML ? ReadNVMLPower() : NvmlPowerData.Unavailable("NVML queries were disabled by the caller.");
             var hasTopology = PowerTopologyInformation.TryGetPowerTopologyEntries(out var topologyEntries);
 
             var hasPerformanceState = GPUApi.TryGetCurrentPerformanceState(Handle, out var currentPerformanceState);
@@ -332,7 +347,7 @@ namespace NvAPIWrapper.GPU
                     .ToArray()
                 : Array.Empty<GPUPowerLimitInfo>();
 
-            var hasAnyData = hasTopology ||
+            var hasAnyData = driverPower.HasAnyData || hasTopology ||
                              hasPerformanceState ||
                              hasPerformancePoliciesStatus ||
                              hasPerformanceDecreaseReason ||
@@ -345,6 +360,14 @@ namespace NvAPIWrapper.GPU
                 return false;
             }
 
+            GPUPowerSpecDatabase.GPUPowerSpec? powerSpec = null;
+            try
+            {
+                GPUPowerSpecDatabase.TryGetSpec(FullName, out powerSpec);
+            }
+            catch (NVIDIANotSupportedException) { }
+            catch (NVIDIAApiException ex) when (NvApiStatusHelper.IsCapabilityUnavailable(ex.Status)) { }
+
             snapshot = new GPUPowerTelemetrySnapshot(
                 this,
                 DateTimeOffset.UtcNow,
@@ -353,10 +376,36 @@ namespace NvAPIWrapper.GPU
                 hasPerformanceDecreaseReason ? (PerformanceDecreaseReason?) performanceDecreaseReason : null,
                 topologyEntries,
                 powerLimitPolicies,
-                powerLimitInformation
+                powerLimitInformation,
+                driverPower,
+                powerSpec,
+                options
             );
 
             return true;
+        }
+
+        private NvmlPowerData ReadNVMLPower()
+        {
+            try
+            {
+                var bus = GPUApi.GetBusId(Handle);
+                GPUApi.GetPCIIdentifiers(Handle, out var deviceId, out var subSystemId, out _, out _);
+                if (bus < 0 || bus > 255 || deviceId == 0)
+                {
+                    return NvmlPowerData.Unavailable("NVAPI returned an invalid PCI identity for power-device matching.");
+                }
+
+                return NvmlPowerProvider.Default.Read(new PowerDeviceIdentity((uint)bus, deviceId, subSystemId));
+            }
+            catch (NVIDIANotSupportedException)
+            {
+                return NvmlPowerData.Unavailable("NVAPI PCI identity queries are unavailable; NVML device association was skipped.");
+            }
+            catch (NVIDIAApiException ex) when (NvApiStatusHelper.IsCapabilityUnavailable(ex.Status))
+            {
+                return NvmlPowerData.Unavailable($"NVAPI PCI identity queries are unavailable ({ex.Status}).");
+            }
         }
 
         /// <summary>

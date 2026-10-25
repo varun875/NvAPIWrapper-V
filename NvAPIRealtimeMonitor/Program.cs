@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using NvAPIWrapper;
 using NvAPIWrapper.GPU;
+using NvAPIWrapper.Native.Exceptions;
 using NvAPIWrapper.Native.GPU;
 
 namespace NvAPIRealtimeMonitor
@@ -44,7 +45,7 @@ namespace NvAPIRealtimeMonitor
         private static readonly char[] SparkChars = { '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█' };
 
         // ── History Buffers ────────────────────────────────────
-        private static readonly Queue<double> PowerHistory = new();
+        private static readonly PowerSampleHistory PowerHistory = new(HistoryLength);
         private static readonly Queue<double> GpuUsageHistory = new();
         private static readonly Queue<double> TempHistory = new();
         private static readonly Queue<double> ClockHistory = new();
@@ -52,17 +53,16 @@ namespace NvAPIRealtimeMonitor
         private static readonly Queue<double> FanSpeedHistory = new();
 
         // ── Peak/Avg Trackers ──────────────────────────────────
-        private static double _peakPowerW;
         private static double _peakTempC;
         private static double _peakClockMHz;
         private static double _peakGpuUsage;
         private static long _sampleCount;
-        private static double _totalPowerW;
         private static double _totalTempC;
 
         // ── Cached Static Info (queried once) ───────────────────
         private static bool _hasNVLinkCached;
         private static string _nvlinkInfoCached = "";
+        private static volatile bool _stopRequested;
 
         private static int Main()
         {
@@ -80,6 +80,27 @@ namespace NvAPIRealtimeMonitor
                 return 1;
             }
 
+            Console.CancelKeyPress += OnCancel;
+            try
+            {
+                return RunMonitor();
+            }
+            finally
+            {
+                Console.CancelKeyPress -= OnCancel;
+                if (!Console.IsOutputRedirected) Console.CursorVisible = true;
+                NVIDIA.Unload();
+            }
+        }
+
+        private static void OnCancel(object? sender, ConsoleCancelEventArgs args)
+        {
+            args.Cancel = true;
+            _stopRequested = true;
+        }
+
+        private static int RunMonitor()
+        {
             var gpus = PhysicalGPU.GetPhysicalGPUs();
 
             if (gpus.Length == 0)
@@ -152,19 +173,6 @@ namespace NvAPIRealtimeMonitor
                 archName = "Unknown";
             }
 
-            // TDP info
-            GPUPowerSpecDatabase.TryGetSpec(gpuName, out var powerSpec);
-
-            string tdpInfo;
-            if (powerSpec != null)
-            {
-                tdpInfo = $"{powerSpec.DefaultTDPWatts}W (max {powerSpec.MaxTDPWatts}W) [{powerSpec.Architecture}]";
-            }
-            else
-            {
-                tdpInfo = "Unknown (not in database)";
-            }
-
             // Cache NVLink info once (capabilities don't change during monitoring)
             try
             {
@@ -194,7 +202,7 @@ namespace NvAPIRealtimeMonitor
             var running = true;
 
             // Monitoring loop
-            while (running)
+            while (running && !_stopRequested)
             {
                 if (Console.KeyAvailable)
                 {
@@ -209,14 +217,12 @@ namespace NvAPIRealtimeMonitor
                     if (k.Key == ConsoleKey.R)
                     {
                         // Reset stats
-                        _peakPowerW = 0;
                         _peakTempC = 0;
                         _peakClockMHz = 0;
                         _peakGpuUsage = 0;
                         _sampleCount = 0;
-                        _totalPowerW = 0;
                         _totalTempC = 0;
-                        PowerHistory.Clear();
+                        PowerHistory.Reset();
                         GpuUsageHistory.Clear();
                         TempHistory.Clear();
                         ClockHistory.Clear();
@@ -227,32 +233,33 @@ namespace NvAPIRealtimeMonitor
                 }
 
                 // ── Collect Telemetry ──────────────────────────
-                double boardPowerW = 0, gpuPowerW = 0;
-                double boardPowerPct = 0;
-                double powerLimitW = 0;
+                GPUPowerTelemetrySnapshot? powerSnapshot = null;
+                string? powerError = null;
+                double? boardPowerPct = null, powerPctOfLimit = null;
                 double gpuUsagePct = 0, memUsagePct = 0, videoUsagePct = 0;
                 double gpuTempC = 0;
                 double graphicsClockMHz = 0, memClockMHz = 0;
                 double fanSpeedPct = 0;
                 double vramUsedMB = 0, vramTotalMB = 0;
                 string perfState = "N/A";
-                string throttleStatus = "None";
+                string throttleStatus = "Unavailable";
                 bool isPowerThrottled = false, isThermalThrottled = false;
-                bool telemetryAvailable = false;
 
                 // Power telemetry
-                if (gpu.TryGetPowerTelemetrySnapshot(out var snapshot) && snapshot != null)
+                try
                 {
-                    telemetryAvailable = true;
-                    boardPowerPct = snapshot.BoardPowerUsageInPercent ?? 0;
-                    boardPowerW = snapshot.BoardPowerDrawInWatts ?? 0;
-                    gpuPowerW = snapshot.GPUPowerDrawInWatts ?? 0;
-                    powerLimitW = snapshot.CurrentPowerLimitInWatts ?? 0;
-                    isPowerThrottled = snapshot.IsPowerLimitActive;
-                    isThermalThrottled = snapshot.IsThermalLimitActive;
-                    throttleStatus = snapshot.ThrottleStatus;
-                    perfState = snapshot.CurrentPerformanceState?.ToString() ?? "N/A";
+                    if (gpu.TryGetPowerTelemetrySnapshot(out powerSnapshot) && powerSnapshot != null)
+                    {
+                        boardPowerPct = powerSnapshot.BoardPowerUsageInPercent;
+                        powerPctOfLimit = powerSnapshot.PowerUsageRelativeToLimitInPercent;
+                        isPowerThrottled = powerSnapshot.IsPowerLimitActive;
+                        isThermalThrottled = powerSnapshot.IsThermalLimitActive;
+                        throttleStatus = powerSnapshot.ThrottleStatus;
+                        perfState = powerSnapshot.CurrentPerformanceState?.ToString() ?? "N/A";
+                    }
                 }
+                catch (NVIDIAApiException ex) { powerError = ex.Message; }
+                catch (NVIDIANotSupportedException ex) { powerError = ex.Message; }
 
                 // GPU Utilization
                 try
@@ -332,7 +339,7 @@ namespace NvAPIRealtimeMonitor
                 catch { }
 
                 // ── Update Histories ───────────────────────────
-                PushHistory(PowerHistory, boardPowerW);
+                PowerHistory.Add(powerSnapshot?.BoardPower);
                 PushHistory(GpuUsageHistory, gpuUsagePct);
                 PushHistory(TempHistory, gpuTempC);
                 PushHistory(ClockHistory, graphicsClockMHz);
@@ -341,10 +348,8 @@ namespace NvAPIRealtimeMonitor
 
                 // ── Update Peaks ───────────────────────────────
                 _sampleCount++;
-                _totalPowerW += boardPowerW;
                 _totalTempC += gpuTempC;
 
-                if (boardPowerW > _peakPowerW) _peakPowerW = boardPowerW;
                 if (gpuTempC > _peakTempC) _peakTempC = gpuTempC;
                 if (graphicsClockMHz > _peakClockMHz) _peakClockMHz = graphicsClockMHz;
                 if (gpuUsagePct > _peakGpuUsage) _peakGpuUsage = gpuUsagePct;
@@ -360,7 +365,6 @@ namespace NvAPIRealtimeMonitor
                 var innerWidth = boxWidth - 4; // space inside ║ ... ║
                 var BarWidth = Math.Max(10, (boxWidth - 50) / 2);
                 var elapsed = stopwatch.Elapsed;
-                var avgPowerW = _sampleCount > 0 ? _totalPowerW / _sampleCount : 0;
                 var avgTempC = _sampleCount > 0 ? _totalTempC / _sampleCount : 0;
 
                 // Helper: pad content to exactly fit inside the box
@@ -377,30 +381,26 @@ namespace NvAPIRealtimeMonitor
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{White}⚡ NvAPIWrapper Realtime GPU Power Monitor{Reset}")}{Bold}{Cyan}║{Reset}");
                 sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU:{Reset} {Bold}{White}{Truncate(gpuName, 40)}{Reset}  {DarkGray}Arch:{Reset} {Yellow}{archName}{Reset}")}{Bold}{Cyan}║{Reset}");
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}VRAM:{Reset} {Green}{vramTotal}{Reset} {DarkGray}Type:{Reset} {Green}{memType}{Reset} {DarkGray}TDP:{Reset} {Magenta}{Truncate(tdpInfo, 30)}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}VRAM:{Reset} {Green}{vramTotal}{Reset} {DarkGray}Type:{Reset} {Green}{memType}{Reset} {DarkGray}Default power:{Reset} {Magenta}{FormatPower(powerSnapshot?.DefaultPowerLimit)}{Reset}")}{Bold}{Cyan}║{Reset}");
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Uptime:{Reset} {Blue}{elapsed:hh\\:mm\\:ss}{Reset}  {DarkGray}Samples:{Reset} {Blue}{_sampleCount}{Reset} {DarkGray}State:{Reset} {Yellow}{perfState}{Reset}")}{Bold}{Cyan}║{Reset}");
                 sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
                 // ── Power Section ──────────────────────────────
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{Yellow}⚡ POWER{Reset}")}{Bold}{Cyan}║{Reset}");
 
-                if (powerSpec != null && telemetryAvailable)
-                {
-                    var powerPct = powerLimitW > 0 ? (boardPowerW / powerLimitW * 100) : boardPowerPct;
-                    var powerColor = powerPct > 95 ? Red : powerPct > 80 ? Yellow : Green;
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Board Power:{Reset}  {powerColor}{Bold}{boardPowerW,7:F1} W{Reset} / {powerLimitW:F0}W  {RenderBar(powerPct, BarWidth, powerColor)}")}{Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU Power:{Reset}    {Cyan}{gpuPowerW,7:F1} W{Reset}")}{Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Peak:{Reset} {Red}{_peakPowerW,6:F1}W{Reset}  {DarkGray}Avg:{Reset} {Blue}{avgPowerW,6:F1}W{Reset}  {DarkGray}Limit:{Reset} {Magenta}{powerLimitW:F0}W{Reset}")}{Bold}{Cyan}║{Reset}");
-                }
-                else
-                {
-                    var powerColor = boardPowerPct > 95 ? Red : boardPowerPct > 80 ? Yellow : Green;
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Board Power:{Reset}  {powerColor}{Bold}{boardPowerPct,6:F1}%{Reset}   {RenderBar(boardPowerPct, BarWidth, powerColor)}")}{Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}(TDP unknown — use GPUPowerSpecDatabase.RegisterSpec() for watts){Reset}")}{Bold}{Cyan}║{Reset}");
-                    sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine("")}{Bold}{Cyan}║{Reset}");
-                }
-
-                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Sparkline (30s):{Reset} {RenderSparkline(PowerHistory, Cyan)}")}{Bold}{Cyan}║{Reset}");
+                var powerColor = powerPctOfLimit > 95 ? Red : powerPctOfLimit > 80 ? Yellow : Green;
+                var boardPowerText = powerSnapshot?.BoardPower.ToString() ?? "N/A";
+                var powerBar = powerPctOfLimit.HasValue ? RenderBar(powerPctOfLimit.Value, BarWidth, powerColor) : "(limit unavailable)";
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Board Power:{Reset} {powerColor}{Bold}{boardPowerText}{Reset}  {powerBar}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Configured:{Reset} {Magenta}{FormatPower(powerSnapshot?.CurrentPowerLimit)}{Reset}  {DarkGray}Enforced:{Reset} {Magenta}{FormatPower(powerSnapshot?.EnforcedPowerLimit)}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Allowed range:{Reset} {Magenta}{FormatPower(powerSnapshot?.MinimumPowerLimit)} - {FormatPower(powerSnapshot?.MaximumPowerLimit)}{Reset}  {DarkGray}GPU domain:{Reset} {FormatPower(powerSnapshot?.GPUPower)}")}{Bold}{Cyan}║{Reset}");
+                var estimateMarker = PowerHistory.IsEstimated ? "~" : "";
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}Peak:{Reset} {Red}{estimateMarker}{FormatWatts(PowerHistory.PeakWatts)}{Reset}  {DarkGray}Avg:{Reset} {Blue}{estimateMarker}{FormatWatts(PowerHistory.AverageWatts)}{Reset}  {DarkGray}Valid polls:{Reset} {PowerHistory.ValidSampleCount}")}{Bold}{Cyan}║{Reset}");
+                var rawPercent = boardPowerPct.HasValue ? $"{boardPowerPct.Value:F1}%" : "N/A";
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}NVAPI board reference usage:{Reset} {rawPercent}  {DarkGray}(~ marks estimates){Reset}")}{Bold}{Cyan}║{Reset}");
+                var powerNotes = powerError ?? (powerSnapshot == null ? "Power queries unavailable" : string.Join(" ", powerSnapshot.PowerDiagnostics));
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}{Truncate(powerNotes, innerWidth)}{Reset}")}{Bold}{Cyan}║{Reset}");
+                sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}History ({HistoryLength} polls):{Reset} {RenderPowerSparkline(PowerHistory.Samples, Cyan)}")}{Bold}{Cyan}║{Reset}");
                 sb.AppendLine($"{Bold}{Cyan}╠{border}╣{Reset}");
 
                 // ── GPU Usage Section ──────────────────────────
@@ -414,7 +414,7 @@ namespace NvAPIRealtimeMonitor
 
                 // ── Temperature Section ────────────────────────
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{Bold}{Red}🌡️  THERMALS{Reset}")}{Bold}{Cyan}║{Reset}");
-                var tempMax = powerSpec != null ? 90 : 100; // estimate
+                var tempMax = 100; // Visualization range, not a hardware throttle threshold.
                 var tempPct = tempMax > 0 ? gpuTempC / tempMax * 100 : 0;
                 var tempColor = gpuTempC > 85 ? Red : gpuTempC > 70 ? Yellow : Green;
                 sb.AppendLine($"{Bold}{Cyan}║{Reset}  {PadLine($"{DarkGray}GPU Temp:{Reset}     {tempColor}{Bold}{gpuTempC,5:F0}°C{Reset}    {RenderBar(tempPct, BarWidth, tempColor)}  {DarkGray}Peak:{Reset} {Red}{_peakTempC:F0}°C{Reset}")}{Bold}{Cyan}║{Reset}");
@@ -460,7 +460,7 @@ namespace NvAPIRealtimeMonitor
 
                 sb.AppendLine($"{Bold}{Cyan}╚{border}╝{Reset}");
                 sb.AppendLine();
-                sb.AppendLine($"  {DarkGray}[Q] Quit  [R] Reset Stats{Reset}");
+                sb.AppendLine($"  {DarkGray}[Q] Quit  [R] Reset Stats | Power averages use valid polls only{Reset}");
 
                 // Write in one go to minimize flicker
                 Console.Write(sb.ToString());
@@ -477,6 +477,40 @@ namespace NvAPIRealtimeMonitor
         }
 
         // ── Helpers ────────────────────────────────────────────
+
+        private static string FormatWatts(double? watts) => watts.HasValue ? $"{watts.Value:F1} W" : "N/A";
+
+        private static string FormatPower(GPUPowerValue? power) => power?.IsAvailable == true
+            ? $"{(power.IsEstimated ? "~" : "")}{FormatWatts(power.Watts)}"
+            : "N/A";
+
+        private static string RenderPowerSparkline(IReadOnlyList<double?> history, string color)
+        {
+            const int width = 30;
+            if (history.Count == 0) return "N/A";
+            var points = Math.Min(width, history.Count);
+            var values = new double?[points];
+            for (var i = 0; i < points; i++)
+            {
+                var start = i * history.Count / points;
+                var end = (i + 1) * history.Count / points;
+                var group = history.Skip(start).Take(end - start).ToArray();
+                values[i] = group.Any(v => !v.HasValue) ? null : group.Average();
+            }
+
+            var valid = values.Where(v => v.HasValue).Select(v => v!.Value).ToArray();
+            if (valid.Length == 0) return "N/A";
+            var min = valid.Min();
+            var range = Math.Max(0.01, valid.Max() - min);
+            var text = new StringBuilder(color);
+            foreach (var value in values)
+            {
+                text.Append(value.HasValue
+                    ? SparkChars[Math.Clamp((int)((value.Value - min) / range * (SparkChars.Length - 1)), 0, SparkChars.Length - 1)]
+                    : ' ');
+            }
+            return text.Append(Reset).ToString();
+        }
 
         private static void PushHistory(Queue<double> history, double value)
         {

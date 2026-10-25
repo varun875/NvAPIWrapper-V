@@ -3,12 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NvAPIWrapper.Native.GPU;
+using NvAPIWrapper.Native.Power;
 
 namespace NvAPIWrapper.GPU
 {
     /// <summary>
     ///     Captures a single point-in-time power telemetry snapshot for a physical GPU.
-    ///     Provides both percentage-based and automatic watt-based power readings.
+    ///     Prefers direct driver watt readings and preserves the source and availability of every watt value.
+    ///     Queries are sequential, not an atomic hardware sample. NVML usage may be averaged by the driver.
     /// </summary>
     public sealed class GPUPowerTelemetrySnapshot
     {
@@ -20,19 +22,64 @@ namespace NvAPIWrapper.GPU
             PerformanceDecreaseReason? performanceDecreaseReason,
             IReadOnlyList<GPUPowerTopologyStatus> powerTopologyEntries,
             IReadOnlyList<GPUPowerLimitPolicy> powerLimitPolicies,
-            IReadOnlyList<GPUPowerLimitInfo> powerLimitInformation)
+            IReadOnlyList<GPUPowerLimitInfo> powerLimitInformation,
+            NvmlPowerData driverPower,
+            GPUPowerSpecDatabase.GPUPowerSpec? powerSpec,
+            GPUPowerTelemetryOptions options)
         {
             PhysicalGPU = physicalGPU;
             CapturedAtUtc = capturedAtUtc;
             CurrentPerformanceState = currentPerformanceState;
             CurrentPerformanceLimit = currentPerformanceLimit;
             PerformanceDecreaseReason = performanceDecreaseReason;
-            PowerTopologyEntries = powerTopologyEntries;
-            PowerLimitPolicies = powerLimitPolicies;
-            PowerLimitInformation = powerLimitInformation;
+            PowerTopologyEntries = Array.AsReadOnly(powerTopologyEntries.ToArray());
+            PowerLimitPolicies = Array.AsReadOnly(powerLimitPolicies.ToArray());
+            PowerLimitInformation = Array.AsReadOnly(powerLimitInformation.ToArray());
+            PowerDiagnostics = Array.AsReadOnly(driverPower.Diagnostics.ToArray());
+            NVMLPCIAddress = driverPower.PciAddress;
+            _powerSpec = powerSpec;
 
-            // Try to auto-resolve the GPU power spec
-            GPUPowerSpecDatabase.TryGetSpec(physicalGPU.FullName, out _powerSpec);
+            BoardPowerReference = DriverValue(driverPower.DefaultLimitWatts);
+            if (!BoardPowerReference.IsAvailable && options.BoardPowerReferenceInWatts.HasValue)
+            {
+                BoardPowerReference = new GPUPowerValue(options.BoardPowerReferenceInWatts, GPUPowerDataSource.UserProvided, true);
+            }
+            if (!BoardPowerReference.IsAvailable && powerSpec != null &&
+                (powerSpec.IsUserProvided || options.AllowReferenceDatabaseEstimates))
+            {
+                BoardPowerReference = new GPUPowerValue(powerSpec.DefaultTDPWatts,
+                    powerSpec.IsUserProvided ? GPUPowerDataSource.UserProvided : GPUPowerDataSource.ReferenceDatabase, true);
+            }
+
+            BoardPower = DriverValue(driverPower.UsageWatts);
+            if (!BoardPower.IsAvailable)
+            {
+                BoardPower = GPUPowerMath.Estimate(BoardPowerUsageInPercent, BoardPowerReference);
+            }
+
+            // NVML usage includes associated circuitry (such as memory). It is not
+            // a core-only reading, and a board TGP is not a GPU-domain reference.
+            GPUPower = options.GPUPowerReferenceInWatts.HasValue
+                ? GPUPowerMath.Estimate(GPUPowerUsageInPercent,
+                    new GPUPowerValue(options.GPUPowerReferenceInWatts, GPUPowerDataSource.UserProvided, true))
+                : GPUPowerValue.Unavailable;
+
+            DefaultPowerLimit = DriverValue(driverPower.DefaultLimitWatts);
+            if (!DefaultPowerLimit.IsAvailable) DefaultPowerLimit = BoardPowerReference;
+            CurrentPowerLimit = PreferDriverLimit(driverPower.CurrentLimitWatts, ActivePowerTargetInPercent);
+            EnforcedPowerLimit = DriverValue(driverPower.EnforcedLimitWatts);
+            MinimumPowerLimit = PreferDriverLimit(driverPower.MinimumLimitWatts, MinimumPowerTargetInPercent);
+            MaximumPowerLimit = PreferDriverLimit(driverPower.MaximumLimitWatts, MaximumPowerTargetInPercent);
+
+            // Legacy database ranges were not sourced from the actual board's
+            // firmware. Only explicit custom ranges may supplement driver limits.
+            if (powerSpec?.IsUserProvided == true)
+            {
+                if (!MinimumPowerLimit.IsAvailable)
+                    MinimumPowerLimit = new GPUPowerValue(powerSpec.MinTDPWatts, GPUPowerDataSource.UserProvided, true);
+                if (!MaximumPowerLimit.IsAvailable)
+                    MaximumPowerLimit = new GPUPowerValue(powerSpec.MaxTDPWatts, GPUPowerDataSource.UserProvided, true);
+            }
         }
 
         private readonly GPUPowerSpecDatabase.GPUPowerSpec? _powerSpec;
@@ -78,7 +125,7 @@ namespace NvAPIWrapper.GPU
         public IReadOnlyList<GPUPowerLimitInfo> PowerLimitInformation { get; }
 
         // =====================================================
-        // Percentage-based properties (always available)
+        // Percentage-based properties (available only when the corresponding query succeeds)
         // =====================================================
 
         /// <summary>
@@ -130,31 +177,74 @@ namespace NvAPIWrapper.GPU
         }
 
         // =====================================================
-        // Watt-based properties (auto-resolved from GPU database)
+        // Watt values with provenance, and compatibility projections of those values
         // =====================================================
 
         /// <summary>
-        ///     Gets whether the GPU's TDP is known in the built-in database.
-        ///     When true, all watt-based properties will return values.
+        ///     Gets whether a reference for 100% board power is available.
+        ///     This does not imply that power usage or current limits are available.
         /// </summary>
-        public bool IsTDPKnown => _powerSpec != null;
+        public bool IsTDPKnown => BoardPowerReference.IsAvailable;
+
+        /// <summary>Gets board/GPU-and-associated-circuitry power, with its source and estimation status.</summary>
+        public GPUPowerValue BoardPower { get; }
+
+        /// <summary>Gets GPU-domain power, available only with an explicit domain-specific reference.</summary>
+        public GPUPowerValue GPUPower { get; }
+
+        /// <summary>Gets the 100% board reference used by estimates. This is independent of the active slider.</summary>
+        public GPUPowerValue BoardPowerReference { get; }
+
+        /// <summary>Gets the default limit and its provenance.</summary>
+        public GPUPowerValue DefaultPowerLimit { get; }
+
+        /// <summary>Gets the configured limit. Missing data never falls back to an assumed default limit.</summary>
+        public GPUPowerValue CurrentPowerLimit { get; }
+
+        /// <summary>Gets the driver-enforced limit, which can differ from the configured limit.</summary>
+        public GPUPowerValue EnforcedPowerLimit { get; }
+
+        /// <summary>Gets the minimum allowed limit when reported or explicitly configured.</summary>
+        public GPUPowerValue MinimumPowerLimit { get; }
+
+        /// <summary>Gets the maximum allowed limit when reported or explicitly configured.</summary>
+        public GPUPowerValue MaximumPowerLimit { get; }
+
+        /// <summary>Gets diagnostics for unavailable or failed optional power queries.</summary>
+        public IReadOnlyList<string> PowerDiagnostics { get; }
+
+        /// <summary>Gets the matched NVML PCI address, when device association succeeded.</summary>
+        public string? NVMLPCIAddress { get; }
 
         /// <summary>
-        ///     Gets the GPU's default TDP/TGP in watts from the built-in database.
-        ///     Returns null if the GPU is not in the database.
+        ///     Gets usage relative to the enforced limit, or configured limit if enforcement data is unavailable.
+        ///     This is distinct from the raw NVAPI percentage, which is referenced to the domain's baseline.
         /// </summary>
-        public double? DefaultTDPInWatts => _powerSpec?.DefaultTDPWatts;
+        public double? PowerUsageRelativeToLimitInPercent
+        {
+            get
+            {
+                var limit = EnforcedPowerLimit.Watts ?? CurrentPowerLimit.Watts;
+                return BoardPower.Watts.HasValue && limit > 0
+                    ? BoardPower.Watts.Value / limit.Value * 100d
+                    : null;
+            }
+        }
 
         /// <summary>
-        ///     Gets the GPU's maximum power limit in watts from the built-in database.
-        ///     This is the maximum the power limit slider can be set to (e.g. in MSI Afterburner).
+        ///     Gets the selected board reference in watts. Inspect BoardPowerReference for provenance.
         /// </summary>
-        public double? MaxTDPInWatts => _powerSpec?.MaxTDPWatts;
+        public double? DefaultTDPInWatts => BoardPowerReference.Watts;
 
         /// <summary>
-        ///     Gets the GPU's minimum power limit in watts from the built-in database.
+        ///     Gets the maximum available power limit. Unverified built-in slider ranges are not returned.
         /// </summary>
-        public double? MinTDPInWatts => _powerSpec?.MinTDPWatts;
+        public double? MaxTDPInWatts => MaximumPowerLimit.Watts;
+
+        /// <summary>
+        ///     Gets the minimum available power limit.
+        /// </summary>
+        public double? MinTDPInWatts => MinimumPowerLimit.Watts;
 
         /// <summary>
         ///     Gets the matched GPU architecture name (e.g. "Ada Lovelace", "Blackwell").
@@ -162,52 +252,34 @@ namespace NvAPIWrapper.GPU
         public string? MatchedArchitecture => _powerSpec?.Architecture;
 
         /// <summary>
-        ///     Gets estimated current board power draw in watts.
-        ///     Uses the board-domain power percentage and the known TDP.
-        ///     Returns null if TDP is unknown or board telemetry is unavailable.
+        ///     Gets board power in watts. Direct NVML data takes precedence over estimates.
+        ///     Inspect BoardPower.IsEstimated and BoardPower.Source before presenting this reading.
         /// </summary>
         /// <remarks>
-        ///     Formula: BoardPowerUsageInPercent / 100 * CurrentEffectivePowerLimitInWatts
-        ///     The "current effective power limit" accounts for any user-set power limit slider position.
+        ///     Estimates use the reference for 100% board usage, not the active power slider.
+        ///     NVML reports the GPU and associated circuitry; it does not measure whole-system power.
+        ///     Its sampling period is device-dependent and may be a one-second average.
         /// </remarks>
         public double? BoardPowerDrawInWatts
         {
-            get => ComputePowerInWatts(BoardPowerUsageInPercent);
+            get => BoardPower.Watts;
         }
 
         /// <summary>
         ///     Gets estimated current GPU-domain power draw in watts.
-        ///     Returns null if TDP is unknown or GPU-domain telemetry is unavailable.
+        ///     Requires both GPU-domain telemetry and an explicit GPU-domain reference in the options.
         /// </summary>
         public double? GPUPowerDrawInWatts
         {
-            get => ComputePowerInWatts(GPUPowerUsageInPercent);
+            get => GPUPower.Watts;
         }
 
         /// <summary>
-        ///     Gets the current effective power limit in watts (accounts for user-set power limit slider).
-        ///     This is the actual watt ceiling the GPU is operating under right now.
-        ///     Returns null if TDP is unknown.
+        ///     Gets the configured power limit in watts, or null. See EnforcedPowerLimit for the effective ceiling.
         /// </summary>
         public double? CurrentPowerLimitInWatts
         {
-            get
-            {
-                if (_powerSpec == null)
-                {
-                    return null;
-                }
-
-                var activePct = ActivePowerTargetInPercent;
-
-                if (activePct.HasValue)
-                {
-                    return _powerSpec.DefaultTDPWatts * activePct.Value / 100d;
-                }
-
-                // Fallback: assume default TDP
-                return _powerSpec.DefaultTDPWatts;
-            }
+            get => CurrentPowerLimit.Watts;
         }
 
         /// <summary>
@@ -215,22 +287,7 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         public double? DefaultPowerLimitInWatts
         {
-            get
-            {
-                if (_powerSpec == null)
-                {
-                    return null;
-                }
-
-                var defaultPct = DefaultPowerTargetInPercent;
-
-                if (defaultPct.HasValue)
-                {
-                    return _powerSpec.DefaultTDPWatts * defaultPct.Value / 100d;
-                }
-
-                return _powerSpec.DefaultTDPWatts;
-            }
+            get => DefaultPowerLimit.Watts;
         }
 
         /// <summary>
@@ -238,22 +295,7 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         public double? MinimumPowerLimitInWatts
         {
-            get
-            {
-                if (_powerSpec == null)
-                {
-                    return null;
-                }
-
-                var minPct = MinimumPowerTargetInPercent;
-
-                if (minPct.HasValue)
-                {
-                    return _powerSpec.DefaultTDPWatts * minPct.Value / 100d;
-                }
-
-                return _powerSpec.MinTDPWatts;
-            }
+            get => MinimumPowerLimit.Watts;
         }
 
         /// <summary>
@@ -261,27 +303,15 @@ namespace NvAPIWrapper.GPU
         /// </summary>
         public double? MaximumPowerLimitInWatts
         {
-            get
-            {
-                if (_powerSpec == null)
-                {
-                    return null;
-                }
-
-                var maxPct = MaximumPowerTargetInPercent;
-
-                if (maxPct.HasValue)
-                {
-                    return _powerSpec.DefaultTDPWatts * maxPct.Value / 100d;
-                }
-
-                return _powerSpec.MaxTDPWatts;
-            }
+            get => MaximumPowerLimit.Watts;
         }
 
         // =====================================================
         // Throttle/limit detection
         // =====================================================
+
+        /// <summary>Gets whether performance-limit flags were actually retrieved.</summary>
+        public bool IsThrottleStatusAvailable => CurrentPerformanceLimit.HasValue;
 
         /// <summary>
         ///     Gets whether a power limit condition is currently active.
@@ -329,7 +359,12 @@ namespace NvAPIWrapper.GPU
         {
             get
             {
-                if (!CurrentPerformanceLimit.HasValue || CurrentPerformanceLimit.Value == PerformanceLimit.None)
+                if (!CurrentPerformanceLimit.HasValue)
+                {
+                    return "Unavailable";
+                }
+
+                if (CurrentPerformanceLimit.Value == PerformanceLimit.None)
                 {
                     return "No Throttling";
                 }
@@ -377,19 +412,15 @@ namespace NvAPIWrapper.GPU
         // Private helpers
         // =====================================================
 
-        private double? ComputePowerInWatts(float? usagePercent)
+        private static GPUPowerValue DriverValue(double? watts)
         {
-            if (_powerSpec == null || !usagePercent.HasValue)
-            {
-                return null;
-            }
+            return watts.HasValue ? new GPUPowerValue(watts, GPUPowerDataSource.NVML, false) : GPUPowerValue.Unavailable;
+        }
 
-            // The effective power limit takes into account the user's power limit slider setting.
-            // If ActivePowerTarget is 110%, the GPU can use up to 110% of the default TDP.
-            // The topology percentage is relative to this effective limit.
-            var effectivePowerLimitWatts = CurrentPowerLimitInWatts ?? _powerSpec.DefaultTDPWatts;
-
-            return effectivePowerLimitWatts * usagePercent.Value / 100d;
+        private GPUPowerValue PreferDriverLimit(double? driverWatts, float? percentage)
+        {
+            return driverWatts.HasValue ? DriverValue(driverWatts) :
+                percentage > 0 ? GPUPowerMath.Estimate(percentage, BoardPowerReference) : GPUPowerValue.Unavailable;
         }
 
         private float? FindDomainUsage(PowerTopologyDomain domain)
@@ -432,7 +463,7 @@ namespace NvAPIWrapper.GPU
             }
 
             var forAllStates = entries.FirstOrDefault(entry => stateSelector(entry) == PerformanceStateId.All);
-            return forAllStates ?? entries[0];
+            return forAllStates;
         }
 
         private static bool TryEstimatePowerInWatts(
@@ -440,20 +471,7 @@ namespace NvAPIWrapper.GPU
             double powerLimitInWatts,
             out double estimatedPowerInWatts)
         {
-            if (powerLimitInWatts <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(powerLimitInWatts));
-            }
-
-            estimatedPowerInWatts = 0;
-
-            if (!usageInPercent.HasValue)
-            {
-                return false;
-            }
-
-            estimatedPowerInWatts = powerLimitInWatts * usageInPercent.Value / 100d;
-            return true;
+            return GPUPowerMath.TryEstimate(usageInPercent, powerLimitInWatts, out estimatedPowerInWatts);
         }
     }
 }
